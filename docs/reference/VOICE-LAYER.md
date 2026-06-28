@@ -37,6 +37,12 @@ Mic → base64 PCM → `input_audio_buffer.append`. Events:
 
 The spoken voice = your **Double** (doubles persona/feel). The corner **system whisper** (scrape progress) is mono/separate (see the story window's `reference/NARRATOR-THE-DOT.md`). Keep them distinct.
 
-## Open product reconciliation (Johnny / story window)
+## Onboarding vs impersonation — resolved (provisional; Johnny will concretize)
 
-Whose voice do you talk to — **your Double** (speaks *as you*, full doubles impersonation) or **"Dot"** (a warm interviewer who reflects you back)? The engine reproduces doubles either way; this only sets the persona the **Talker** writes in. Per Johnny's "doubles feeling," default = **the Double**.
+Not either/or — a **sequence**:
+1. **Onboarding = a narrator (Dot — name TBD) you *tell your story to*** ("tell your story to somebody"). It reflects you back. This is the live Grok voice; persona = warm reflector, **not** your impersonation.
+2. **The impersonation ("this is who you are") = a CARD** — your personality as the reveal artifact (the doubles **Talker** writes it in your voice).
+3. **Polish-chat (optional) = the same narrator takes on *your* persona** → you chat with your Double to refine who you really are. **This is where the full doubles impersonation lives.**
+4. **Share = one story card.** Other cards build toward something else (TBD).
+
+So the doubles engine (Talker / Critic / persona) powers the **reveal card + the polish-chat**; the onboarding voice is the **reflector**. Loose for now — Johnny has a follow-up session to make it concrete; don't over-build ahead of it.

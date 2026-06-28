@@ -56,6 +56,8 @@ No silent try/catch defaults, no canned strings. Every failure → retry, semant
 
 The orchestrator is delivery-agnostic: `runTurn(transcript) → reply`. doubles wired that to iMessage (Spectrum). **pepl wires it to Grok voice + live transcription** — see [VOICE-LAYER.md](./VOICE-LAYER.md). The loop, persona, critic, recovery — unchanged.
 
+> Where the impersonation surfaces (provisional): onboarding is a **narrator (Dot) you tell your story to** (reflects you, not your twin). The doubles **impersonation** shows up as the **reveal card** ("this is who you are") + an optional **polish-chat** where the narrator takes on your persona so you refine it. So the Talker/persona power the **card + polish-chat**, not the onboarding voice. See VOICE-LAYER "Onboarding vs impersonation."
+
 ## The 8 things that make it FEEL like doubles
 
 1. Every turn = one semantic shape decision (not keyword rules). 2. Voice fidelity policed every turn (8 axes + em-dash floor + forbidden-phrase fast-fail). 3. Confidently the original — first-person, never admits AI, plays offense. 4. Memory is semantic + grounded (RRF; real entities only; dangle, don't dump). 5. Silence is honest, never templated. 6. Register is persona-anchored, not reactive. 7. The persona is specific + load-bearing. 8. Failure is visible & reasoned, never silently degraded.
