@@ -1,63 +1,60 @@
 # Pebble — Experience (MVP)
 
-Product name **Pebble** (repo `pepl`). The MVP experience spec, captured from Johnny's walkthrough. Living journey doc — Window 2 owns it.
+Product name **Pebble** (repo `pepl`). The living journey doc — Window 2 owns it. **v1 reflects Johnny's 2026-06-28 redirect** (live data, voice-agent Dot, "see a version of yourself" as the hero, network graph as the open endeavour). The beat-by-beat is in [DEMO-SCRIPT.md](./DEMO-SCRIPT.md); Dot's voice is in [reference/NARRATOR-THE-DOT.md](./reference/NARRATOR-THE-DOT.md).
 
-## Design system
+## The one-line experience
 
-**Skeuomorphic × Y2K × nature.** Color like a **Monet painting** (soft, painterly). **Art Nouveau** for the card designs. A glassy folder; an interactive **"glow"** motif on the landing. Cute, tactile, alive — not flat / corporate.
+You sign in with Gmail, talk to Dot for a minute while Pebble reads your world, and then you **see a version of yourself** — your story and your stats, every line traceable to where it came from, and you sharpen it just by talking. *AI organizes; you originate.*
 
 ## The flow (the "glow")
 
-1. **Landing** — one cute single page: the word **Pebble**, a one-liner, and an interactive **glow** you can play with. One CTA: *Sign in / Try it out*.
-2. **Google SSO** — sign in.
-3. **Onboarding-as-loading** — the scrape takes a while, so the wait *is* the onboarding (and it's cute, not a spinner):
-   - A persistent **corner artifact** shows scrape progress (% + time left) and follows you through onboarding, so the wait makes sense.
-   - **Make your own card** — a cute interaction (with Claude) where you shape/parse your card instead of writing about yourself cold (you don't know your own one-liner).
-   - **Narrator: "The Dot"** — our narrator, in **Grok voice** (funny). Reuse the **dot project's initial-loading narrator voice** (`/Users/johnnysheng/code/dot`).
-   - **Three onboarding questions** (answer by Grok voice **or** text):
-     1. A **turning point** you've encountered in your life.
-     2. The **one thing you're uniquely good at**.
-     3. What someone should know to **be a good friend to you**.
-4. **Ready → reveal** — press the (now-ready) button, or finishing the questions lands you on *"bringing up your cards now."*
-5. **The dopamine reveal** — a **glassy folder** appears; your cards populate into it; you **click to unpackage**; cards spread onto a **desktop** (cofounder.co.uk-style). Pull cards out, sort, explore.
+1. **Landing** — one cute page: the word **Pebble**, a one-liner, an interactive **glow** you can play with. One CTA: **Connect Gmail**.
+2. **Connect (signup = data grant)** — **Composio Gmail OAuth** (reuse `doubles`' Gmail integration). Signing in *is* granting the scrape; it kicks off in the background immediately. No separate signup, no "go talk to an AI."
+3. **Meet Dot (voice-agent onboarding-as-loading)** — you talk to **Dot, a Grok voice agent** (voice from the `dot` project). She asks a few questions to pull your story out — this *is* the onboarding, and it covers the scrape latency. Replaces the old iMessage agent. Three questions (voice **or** text):
+   1. A **turning point** you've encountered in your life.
+   2. The **one thing you're uniquely good at**.
+   3. What someone should know to **be a good friend to you**.
+   - A persistent **corner artifact** (system whisper) shows scrape progress (`people found · 60%`) so the wait makes sense.
+4. **Build your card (conversational prefill → refine)** — your answers + the scrape **prefill** your card. Low-level facts (name) auto; the meat is a **story of *why* you do what you do / what you've tried to build**. You say *"looks good"* or **keep talking to Dot to optimize** — a slow, casual iteration. You tell your story; its job is to organize it back to you.
+5. **See a version of yourself (the reveal — the hero)** — a Dot/GX-brand reveal: **a version of you**, your story + your stats. *People want to be told who they are* — this is the want-to-know hit and the honest mirror, at once.
+6. **Correct by talking (receipts = the correction surface)** — every surfaced thing shows **where we found it** ("pulled from 3 emails with Teri"), casually. You adjust by **explaining what it means to you** — no forms, no field-editing. This single move is the grounding gate (made visible), the correction loop, and the deepening.
 
-## The cards
+## The cards (the "version of yourself")
 
-A folder of cards on a desktop. Per card: pull out → view on desktop → **click → modal** (detail) → **flip over** (back names the card) → **download PNG** to share. Art Nouveau formatting.
+A folder of cards in the Dot/GX brand. Per card: view → **click → modal** (detail + its receipts) → *(if time)* flip + download PNG to share.
 
-Three hero cards + cute shareables:
-- **Profile card** — your basic info.
-- **The "wow" card** — the immediate dopamine hit (shareable).
-- **Relationship graph card** — the functional centerpiece (expandable).
-- **+ cute shareables** — e.g., **MBTI guess**, your **story**.
+- **Profile card** — name + basics (auto, low-level).
+- **Story card** *(the hero)* — *why you do what you do / what you've built*, in your voice, **grounded** (every claim → a source).
+- **Stats card** — your numbers (people surfaced, who recurs most, etc.) — the want-to-know hook.
+- **Network / relationship card** *(the open endeavour — stretch)* — see below.
+- *Cute shareables if time:* **MBTI guess**, your **story** as a post.
 
-Surfaced content = what we find about you (online + your three answers): your **story**, **personality (guesses MBTI)**, **profile**, **relationship graph**.
+Every card is **grounded** (traceable claims), **correct-by-talking**, and shows its receipts.
 
-## The relationship graph (the functional piece)
+## The network / relationship graph (the open endeavour)
 
-**Not random dots** — a **planetary orbit / electron-molecule** model:
-- **You** at the center.
-- Rings outward: **inner circle → 1st → 2nd → 3rd connection**, people placed by closeness.
-- **Lines** between rings show how you connect to each person.
-- People named in your stories / inferred-closer land on the right ring.
-- **Click to expand → modal** with the full orbit.
-- *Future:* "how closely related am I to X?" answered from your network ("you are the 5 people around you").
+The aspirational centerpiece, scoped as the **stretch** — *"a really interesting thing we keep as the open endeavour."* Not random dots — a **planetary orbit / electron-molecule** model: **you** at center; rings outward (inner → 1st → 2nd → 3rd); lines showing how multiple people connect; people from your stories/scrape placed by closeness. Demoed as a single animated reveal if it's solid; cut without apology if it's not. *Future:* "how closely related am I to X?" ("you are the 5 people around you").
 
-## Voice & narrator
+## Voice & narrator (now core)
 
-Grok voice for the onboarding questions; **"The Dot"** as narrator, using the **dot project's initial-loading voice**. Voice or text input.
+**Dot is a Grok voice agent** — voice in (your answers) and voice out (Dot talks). Voice from the `dot` project, adapted in [reference/NARRATOR-THE-DOT.md](./reference/NARRATOR-THE-DOT.md). Two voices, never crossed: **Dot** (warm, spoken) and the **system whisper** (mono, lowercase — the scrape-progress corner artifact). Engineering: cache audio by text + `prewarm()` so the first line is instant; autoplay-block **degrades to text, never silence**.
 
-## Open questions (decisions for a buildable 6-hr spec)
+## Design system
 
-- Landing **one-liner** copy.
-- **Data source for the demo:** Gmail scrape? a precached export? built from the three answers + public footprint? (Drives what the cards/graph contain.)
-- Is **voice (Grok STT/TTS)** in scope today, or text-first with voice as a stretch?
-- The exact **fields** on the three hero cards.
-- What **"make your own card"** concretely is.
+**Dot/GX brand**, skeuomorphic and alive. *Open design fork (not blocking):* the original EXPERIENCE called for **Monet × Art Nouveau × Y2K-nature** (painterly, glassy folder, Art-Nouveau cards); the `dot` reference brings a **clean, light, depth-from-light** system (one accent hue, mono system voice, blur-up motion, nothing bounces). Johnny said "match with GX Vision / little dot brand scheme." → **Decide which skin** (or the blend) at design time; the motion/voice discipline from `dot` carries over regardless.
 
-## Scope reality (≈6 hrs) — proposed hero cut
+## Scope reality (≈6 hrs, all-live) — the hero cut
 
-- **Hero (must demo):** the **reveal** — folder → unpackage → cards on the desktop → open the **relationship-orbit** + **profile/story** cards → *it's grounded* (really you, really your people).
-- **Layer if time:** glow landing · Grok-voice onboarding + Dot narrator · scrape-progress corner artifact · card flip + PNG share · MBTI card.
-- **Precache (engineered half-half):** the scrape — the corner timer is a staged artifact; the real extract → graph → story pipeline runs behind it.
-- **Simplify for time:** live Gmail OAuth → precached export; full voice → text-first; elaborate animations → only the few that sell the dopamine moment.
+- **Must demo (protect live, full sequence):** Connect Gmail → scrape → **Dot voice Q&A** → **build-your-card** → **see a version of yourself (story + stats), grounded** → **correct by talking**. Hero = the reveal + the receipt-correction.
+- **Open endeavour (stretch):** the multi-person **network graph**.
+- **Everything live** (Composio Gmail, Grok voice, You.com scrape, InsForge generate+critic). The **one** engineered half-half: **Dot's first voice line is a cached Grok response** (prewarmed, instant); everything after live. **No backup video.** We harden the live path (the gotchas are the playbook) and **fail loud** (red badge), never a silent fake.
+- **Layer if time:** card flip + PNG share · MBTI card · richer network · glow polish.
+
+## Resolved (was: open questions)
+
+- **Data source** → **LIVE** (Composio Gmail signup + You.com scrape + `doubles` scraping logic ported). Only cache = Dot's first voice line. *(was: precache assumed)*
+- **Voice** → **in scope, core** (Dot = Grok voice agent). *(was: text-first)*
+- **Track + sponsors** → **Potion Lab** · InsForge (gateway + deploy) + You.com (grounding node) + Composio (Gmail) + Grok (voice).
+- **Hero** → **see a version of yourself** (story + stats, grounded, correct-by-talking); network graph = open endeavour.
+
+Still open: landing **one-liner** copy · exact **Stats card** fields · the **design skin** fork above · (tech) whether Composio or `doubles`' direct Google OAuth carries Gmail.

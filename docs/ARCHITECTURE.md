@@ -6,16 +6,22 @@ A high-level abstract of what pepl's engine *is*. Conceptual, not an implementat
 
 pepl builds a **Double** of a person — a semantic model of who they are — from their interactions, and lets them (and others) **see, reclaim, and connect** those stories. The engine is a **semantic multi-agent loop over a memory of you**: interpretation is done by agents; structured state is just substrate. The framing (from our research): the AI is the *unconscious* that surfaces; the human is the *conscious* that reclaims meaning.
 
-## The loop (conceptual)
+## The conversational loop (faithful to doubles)
 
-A turn flows through agents, each owning exactly one decision:
+pepl's core **is the doubles turn loop** — reproduce its *feeling*. Full spec: [reference/DOUBLES-FEELING.md](./reference/DOUBLES-FEELING.md).
 
-- **Reasoner** — reads your graph + memory; decides what to surface / which output to build.
-- **Generator** — produces the artifact (a story, a bio, an answer) in *your* voice, grounded in *your* context.
-- **Critic (grounding + voice)** — a held-out judge: every claim must trace to a real interaction, and it must sound like you, or it regenerates.
-- **Recovery** — semantic handling when something fails; never a canned string.
+`transcript in → Thinker → Talker → Critic → (regen ≤2) → Recovery on failure → reply (spoken)`
 
-State (people, interactions, signals, relational state) is data; decisions are agents.
+- **Thinker** (fast model) — picks one *speaking shape* (mirror / pullback / probe_response / deflect / name_state / repair_offer) + a register call (length/casing/punctuation).
+- **Talker** (voice model) — one reply *in the user's voice*, grounded in real entities, honoring the forbidden-phrase + anti-repetition rules.
+- **Critic** (judge model) — 8 axes (voice fidelity · no-chatbot-language · register · novelty · no-persona-break · safety · voice-texture incl. an **em-dash floor** · grounding); emit or regen (≤2).
+- **Recovery** — semantic ack in-voice or honest `___SILENCE___`; never a template.
+
+State (people, interactions, signals, persona) is data; every decision is an agent. Semantic-only in the user-facing loop; no silent fallbacks.
+
+## Delivery: voice, not text (the one swap)
+
+The orchestrator is delivery-agnostic (`runTurn(transcript) → reply`). doubles delivered via iMessage; **pepl delivers via Grok voice + live transcription** (mic → STT → transcript → loop → reply → TTS). Spec: [reference/VOICE-LAYER.md](./reference/VOICE-LAYER.md).
 
 ## Ingestion → the relationship graph
 
@@ -31,12 +37,13 @@ A queryable memory of one person — people, interactions, signals, relational s
 
 ## Shape (conceptual layout)
 
-- **agents** — reasoner · generator · critic · recovery (+ shared contracts)
-- **ingest** — extract people/relationships; build, seed, and update the graph
-- **memory** — schema · store · recall
-- **orchestrator** — the turn loop
-- **llm** — model routing + the held-out-family rule
-- **web** — the API + a live stream of the graph forming
+- **agents** — thinker · talker · critic · recovery (the doubles loop) (+ shared contracts)
+- **voice** — Grok TTS (out) + realtime STT / live transcription (in) — the delivery layer (replaces iMessage)
+- **ingest** — extract people/relationships from Composio Gmail → signals + the graph
+- **memory** — schema · store · recall (RRF · paraphrase · honest absence)
+- **orchestrator** — the turn loop (`runTurn(transcript) → reply`), delivery-agnostic
+- **llm** — model tiers (Thinker fast · Talker voice · Critic judge)
+- **web** — the API + WS (live transcription) + the reveal
 
 The frontend renders the graph + correction, the generated story, and the ask surface — bound to the live stream so it feels alive.
 

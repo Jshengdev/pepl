@@ -14,7 +14,7 @@ Distilled from three of Johnny's prior hackathon builds — **`dot`** (reflectiv
 4. **Prove persistence with write→read-back.** pepl mirrors the past — a saved card/graph/story that vanishes or goes stale on re-read makes the reveal silently re-run the model or show empty. After every write, **re-read and assert the roundtrip** in the e2e gate. Persist what you replay; never silently re-call. *(dot)*
 5. **The demo MOMENT must fire on the path the frontend actually hits.** A beat wired into a background/durable/parallel job won't fire on the real HTTP request. Trace the exact request end-to-end and confirm every beat fires on **that** request. *(dot)*
 6. **Handle the sensitive-domain trap.** pepl reflects a person's life back at them — **observational language only** ("the record shows you leaned on Teri most this year"), never clinical/mind-reading ("you're anxious/depressed"). Keep any safety/crisis handling **deterministic and separate** from the reflection LLM: a cue scan routes to a help message with **no reframe**. *(caltech, dot)*
-7. **Record a backup video before freeze; assume venue wifi flakes.** Full green-run video queued open in a tab; the live scene falls back to it on any error. Disk-cache reads so `/demo/*` is local. *(dot, caltech)*
+7. **Everything live — harden the path; no backup video (pepl founder call).** Pebble runs live end to end with no fallback recording. Make live survive instead: retry external calls, `prewarm()` Dot's first voice line (the one cache), fail-loud red badges on any node error, verify the whole path green + rehearse before freeze. The wifi risk is real but accepted — the mitigation is a hardened live path, not a recording. *(deviates from dot/caltech, who relied on backup videos.)*
 
 ---
 

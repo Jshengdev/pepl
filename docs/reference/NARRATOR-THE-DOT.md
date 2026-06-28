@@ -2,7 +2,7 @@
 
 pepl's onboarding-as-loading uses a narrator, **"The Dot" (Dot)**, lifted from Johnny's `dot` project. **The `dot` project is a health app** — its verbatim copy is about doctors/reports and must **not** ship in Pebble. What we reuse is the **voice DNA**, the **two-voice structure**, the **TTS/copy-as-data engineering pattern**, and the **blur-up motion** — plus a **pepl-adapted script** (below, §4–5) that's ready to ship as text.
 
-Owner: Story window (this is experience/copy). Build window consumes §4–6. See `EXPERIENCE.md` (the flow Dot narrates) and `HACKATHON-GOTCHAS.md` (voice/TTS is the #1 flaky thing — text-first, TTS gated).
+Owner: Story window (this is experience/copy). Build window consumes §4–6. See `EXPERIENCE.md` (the flow Dot narrates) and `HACKATHON-GOTCHAS.md` (the make-live-work playbook). **Voice is CORE** — Dot is a Grok voice agent; her **first line is a cached/prewarmed Grok response** (instant open), every line after live.
 
 ---
 
@@ -35,7 +35,7 @@ System-whisper reference: `"dot is reflecting…"` · `"the story so far · 60%"
 
 ---
 
-## 4. Pebble-adapted narrator script (READY TO SHIP as text; voice = stretch)
+## 4. Pebble-adapted narrator script (Dot = Grok voice agent; text is the autoplay-block degrade)
 
 Mapped to `EXPERIENCE.md`'s flow. Copy lives as data (one `script.ts`), phase components never change. Each line is a Dot bubble unless tagged `[whisper]` (system mono).
 
@@ -89,6 +89,6 @@ IBM Plex Mono, lowercase, tabular-nums. Honest absence is fine; **show a count, 
 
 - **Copy-as-data:** one `script.ts` (`Dot.greet`, `Dot.questions[]`, `Dot.reveal`) — copy is data, phase components are dumb. Lets us tune voice after the skeleton runs.
 - **Motion = blur-up:** every content swap "develops" like a photo (`opacity .25→1, blur(7px)→0, ~420ms`, re-trigger via React `key`). **Never a spinner** for instant data; one signature ease `cubic-bezier(0.16,1,0.3,1)`; nothing bounces. Reduced-motion guard mandatory (clamp to 0.01ms).
-- **Voice/TTS pattern (STRETCH, gated):** `lib/voice.ts` — TTS by Grok voice, **cache audio blobs by text**, `prewarm()` so the first gesture-line is instant, **autoplay-blocked fails quiet (text still shows)**. Keep voice behind a flag (`VOICE=1`); text is the default demo path. *(dot's own gotchas: STT 404, autoplay block, realtime unknowns — voice is the flakiest thing on stage.)*
+- **Voice/TTS pattern (CORE):** `lib/voice.ts` — TTS by Grok voice, **cache audio blobs by text**, `prewarm()` so the first line is instant. **Dot's first line is the one cached response** (the only `// DEMO_CACHE:`); everything after is live. Autoplay-blocked **degrades to text, never silence**. *(dot's own gotchas: STT 404, autoplay block — handle them; voice is core, so harden it.)*
 
 > **Open micro-decision (defer to Johnny):** narrator name stays **"Dot"** per `EXPERIENCE.md`, but "Pebble + Dot" could become one mark (a pebble *is* a dot). Not blocking — flagged in `OPEN-QUESTIONS.md` if it matters.
