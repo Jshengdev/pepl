@@ -21,7 +21,7 @@ The porting tech / CONTRACTS (Window 1). The building (Window 3).
 ## Inputs
 
 - gx `/Users/johnnysheng/code/gx` — `raw/`, `wiki/`, `patterns.md`, `threads.md` (start from [../VISION.md](../VISION.md)'s source map).
-- Hackathon theme `/Users/johnnysheng/code/hackathon` — `DEMO-SCRIPT.md`, `DEVPOST.md`, `caltech/`, `_bmad-output/` (note the AI-paradox / HackTech framing).
+- **Wizard Hackathon brief + strategy: [../HACKATHON.md](../HACKATHON.md)** — track **Potion Lab**, sponsor prizes, the ~6-hr time budget. Past hackathon assets for reference: `/Users/johnnysheng/code/hackathon` (`DEMO-SCRIPT.md`, `DEVPOST.md`, `caltech/`).
 - Window 1's technical constraints (cheap vs expensive).
 
 ## Outputs (hand off)

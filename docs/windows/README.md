@@ -27,6 +27,8 @@ Windows **1 & 2 lock the specs** (run first + continuously); **Window 3 executes
 
 **The synthesis:** pepl = `gx`'s product, on `doubles`' semantic engine, built by `dot`/`sayhello`'s lock-before-build loop with a **held-out grounding judge**. Full: [../README.md](../README.md).
 
+**The hackathon:** **Wizard Hackathon** — a one-day sprint (~6 hrs hacking). Track fit: **Potion Lab**. Sponsor prizes to target: InsForge ($500, = pepl's backend infra) + You.com ($1k, citation-backed grounding). Full brief + strategy: [../HACKATHON.md](../HACKATHON.md). **Time discipline is mandatory: demo path only, precache hard.**
+
 **Source repos (read-only context):**
 
 | repo | path | who uses it |

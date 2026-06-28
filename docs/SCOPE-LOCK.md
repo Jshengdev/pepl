@@ -49,9 +49,18 @@ ingest(precached) → extract → graph(seeded slightly wrong) → [render]
 
 The user looks at the auto-built relationship map, sees it's *almost* right, and instinctively corrects it ("Teri's closer than that") — and in correcting it, hands pepl the deeper context. Then pepl produces a bio/story grounded in *their actual life* that makes them go **"...I see my life better now."** Every claim in it is traceable to something they gave it — nothing invented.
 
+## Time budget (Wizard Hackathon)
+
+One day; **~6 hrs hacking (11:00–17:00)**, judging 17:00, demo 18:00. See [HACKATHON.md](./HACKATHON.md). This forces: demo path only, precache hard, one hero moment live.
+
 ## Integrations / sponsors + where they land
 
-> **TODO-confirm with Johnny** (hackathon-specific). Likely seams: an LLM provider (generator) + a *different* one for the held-out critic; a data source for ingestion (precached export for the demo). Name each on screen where it fires.
+> **PROPOSAL — founder to confirm.** Track: **Potion Lab** (identity / personalization / human connection). Sponsor tech to target (prize + infra):
+> - **InsForge** — backend infra (model gateway + db + auth + deploy); the generator + held-out critic both route through its model gateway (different model families). *(Best Use of InsForge: $500.)*
+> - **You.com** — citation-backed Web Search for the enrichment / external-grounding step (each surfaced fact carries a source). *(Best Use of You.com: $1k credits; reinforces the grounding judge.)*
+> - Fallback if minimizing new-infra risk: known stack (Hono + a model API + in-memory store), sponsor credits used lightly.
+>
+> Name each sponsor on screen where it fires (judges look for this).
 
 ## CUT (not in the demo)
 
