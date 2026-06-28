@@ -36,6 +36,14 @@ export function LandingPage() {
         <HeroGlobe />
       </div>
 
+      {/* Discoverability nudge for the globe — appears briefly, then fades. */}
+      <p
+        aria-hidden="true"
+        className="hint-fade pointer-events-none absolute inset-x-0 top-[67%] z-[5] text-center text-sm italic text-charcoal/50"
+      >
+        tap the globe to trace your path
+      </p>
+
       {/* Soft wash up top keeps the tagline legible over the globe. */}
       <div
         aria-hidden="true"

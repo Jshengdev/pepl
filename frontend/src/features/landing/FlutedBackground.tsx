@@ -315,28 +315,39 @@ function createFlutedGradient(
 export function FlutedBackground({
   lifted = false,
   bg,
+  stops,
+  lifts,
 }: {
   lifted?: boolean;
   bg?: string;
+  // Optional palette window (saturated bottom → fade-bg top) and per-column
+  // heights. Used by the slide deck to give each slide its own fluted shape +
+  // onboarding-palette colors; the landing passes neither and keeps CONFIG.
+  stops?: Stop[];
+  lifts?: number[];
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const ctrl = useRef<FlutedController | null>(null);
   useEffect(() => {
     if (!ref.current) return;
-    // Optional bg override (e.g. a black slide) recolors the canvas fill and the
-    // final fade stop so the flutes rise out of that background, not the cream.
-    const cfg: FlutedConfig = bg
-      ? {
-          ...CONFIG,
-          bg,
-          stops: CONFIG.stops.map((s, i) =>
-            i === CONFIG.stops.length - 1 ? { ...s, color: bg } : s,
-          ),
-        }
-      : CONFIG;
+    const cfg: FlutedConfig = { ...CONFIG };
+    if (stops) cfg.stops = stops;
+    if (lifts) {
+      cfg.lifts = lifts;
+      cfg.cols = lifts.length;
+    }
+    if (bg) {
+      // bg override recolors the canvas fill; without explicit stops it also
+      // recolors the final fade stop so the flutes rise out of that background.
+      cfg.bg = bg;
+      if (!stops)
+        cfg.stops = CONFIG.stops.map((s, i) =>
+          i === CONFIG.stops.length - 1 ? { ...s, color: bg } : s,
+        );
+    }
     ctrl.current = createFlutedGradient(ref.current, cfg);
     return () => ctrl.current?.destroy();
-  }, [bg]);
+  }, [bg, stops, lifts]);
   useEffect(() => {
     ctrl.current?.setLifted(lifted);
   }, [lifted]);

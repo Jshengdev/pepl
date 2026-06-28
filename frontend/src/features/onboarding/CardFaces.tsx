@@ -3,12 +3,20 @@
 import { useEffect, useRef } from "react";
 import { Hourglass, MapPin, Cake, Briefcase, type LucideIcon } from "lucide-react";
 import { createFluted, CARD_DEFAULTS, type FlutedController } from "./fluted";
-import { cardStopsFromColors } from "./palette";
+import { cardStopsFromColors, FADE_BG } from "./palette";
 import type { CardDesign, Person } from "./types";
 
 // The two faces of a pepl card, each filling its parent (the stack positions
-// them). Front = profile info (Figma layout); Back = the fluted gradient backing
+// them). Front = profile info (Figma layout) on the same Monet cream the backs
+// fade to, with the same painterly tooth; Back = the fluted gradient backing
 // derived from the person's profile colors. No stroke on either face.
+
+// painterly overlays for the card front — a lit canvas tooth (soft-light) + a
+// fine grain (multiply), the same SVG-noise recipe the page uses in globals.css.
+const PAPER_TEXTURE =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.16' numOctaves='2' stitchTiles='stitch' result='n'/%3E%3CfeDiffuseLighting in='n' surfaceScale='1.8' diffuseConstant='1.05'%3E%3CfeDistantLight azimuth='235' elevation='56'/%3E%3C/feDiffuseLighting%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E\")";
+const GRAIN =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")";
 
 export function CardFront({ person }: { person: Person }) {
   const inlineRows: [LucideIcon, string, string][] = [

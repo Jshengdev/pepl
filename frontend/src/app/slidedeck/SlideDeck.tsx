@@ -65,13 +65,13 @@ export function SlideDeck() {
   return (
     <div
       ref={rootRef}
-      className="fixed inset-0 flex items-center justify-center bg-black"
+      className="fixed inset-0 flex items-center justify-center bg-cream"
     >
-      {/* 16:9 stage — sized to fit any window, letterboxed in black, and held at
-          16:9 in fullscreen. `container-type: size` lets the slides size their
-          type in cqw/cqh so everything scales with the stage. */}
+      {/* 16:9 stage — sized to fit any window, letterboxed, and held at 16:9 in
+          fullscreen. `container-type: size` lets the slides size their type in
+          cqw/cqh so everything scales with the stage. */}
       <div
-        className="relative aspect-video overflow-hidden bg-black text-cream"
+        className="relative aspect-video overflow-hidden bg-cream text-charcoal"
         style={{
           width: "min(100vw, calc(100vh * 16 / 9))",
           height: "min(100vh, calc(100vw * 9 / 16))",
@@ -96,8 +96,8 @@ export function SlideDeck() {
             <span
               className={`h-1.5 rounded-full transition-[width,background-color,transform] duration-300 group-active:scale-90 ${
                 i === index
-                  ? "w-6 bg-white/80"
-                  : "w-1.5 bg-white/30 group-hover:bg-white/55"
+                  ? "w-6 bg-charcoal/80"
+                  : "w-1.5 bg-charcoal/25 group-hover:bg-charcoal/50"
               }`}
             />
           </button>
@@ -105,14 +105,14 @@ export function SlideDeck() {
       </div>
 
       {/* slide counter + fullscreen toggle */}
-      <div className="absolute bottom-1.5 right-2 flex items-center gap-1 text-white/40">
+      <div className="absolute bottom-1.5 right-2 flex items-center gap-1 text-charcoal/40">
         <span className="text-xs tabular-nums">
           {String(index + 1).padStart(2, "0")} / {String(count).padStart(2, "0")}
         </span>
         <button
           onClick={toggleFullscreen}
           aria-label="Toggle fullscreen"
-          className="flex h-10 w-10 items-center justify-center transition-[color,transform] duration-150 hover:text-white/80 active:scale-[0.96]"
+          className="flex h-10 w-10 items-center justify-center transition-[color,transform] duration-150 hover:text-charcoal/80 active:scale-[0.96]"
         >
           <svg
             viewBox="0 0 24 24"
