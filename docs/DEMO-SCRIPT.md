@@ -1,65 +1,68 @@
-# Pebble — DEMO-SCRIPT
+# Pebble — The Experience (UX journey + the story it serves)
 
-> **Status: DRAFT v0 — reflects Johnny's 2026-06-28 redirect. Confirm before SCOPE-LOCK is promoted to LOCKED.**
-> Beat-by-beat judge-facing walkthrough. Owner: Story window. Hand to Build window once confirmed. Pairs with [EXPERIENCE.md](./EXPERIENCE.md) (the flow) + [reference/HACKATHON-GOTCHAS.md](./reference/HACKATHON-GOTCHAS.md) (the landmine map) + [reference/NARRATOR-THE-DOT.md](./reference/NARRATOR-THE-DOT.md) (Dot's voice).
+> **Status: v1 — 2026-06-28.** The whole experience beat by beat: **what you see/do · what Pebble does & says · the output · how it feels · the story it serves.** This is the UX walkthrough (and the demo narrative). Flow = [EXPERIENCE.md](./EXPERIENCE.md) v3; backend per beat = [DESIGN-GOALS.md](./DESIGN-GOALS.md); what's real = [VERIFICATION.md](./VERIFICATION.md). Front-end visuals are Johnny's per-page examples.
 
-## The protected hero (the one beat that must work live)
+## The story we're solving for (the frame)
 
-**Sign in with Gmail → Pebble reads your actual world → it shows you a version of yourself (your story + your stats), every line traceable to where it found it → you correct/deepen it just by talking → it updates live.** Everything else is theater around this. The multi-person **network graph is the "open endeavour"** — the aspirational stretch, demoed if it's solid, cut without apology if it's not.
+People are **blind to themselves**. Your life is a scattered, digitized mess you will *never* sit down to organize — so you lack perspective on who you are and who's around you. The whole point of Pebble: **AI does the one thing only AI can — organize the mess and reflect it back — so you can do the one thing only you can — see yourself, and decide.** Every beat below is engineered toward one moment: **"…that's me. I see my life better."** And it's believable because *every line traces to something real* — receipts, not a horoscope.
 
-## Track + stack (where each sponsor fires on screen)
+Total experience: **~60–90s** (the onboarding + card-making *is* the loading; the reveal lands when the scrape finishes).
 
-| Sponsor | Fires at beat | What it does | Why it's innovative |
-|---|---|---|---|
-| **Composio** | Connect (signup) | live Gmail OAuth = sign-in + data grant in one | no separate signup; the auth *is* the ingest |
-| **Grok** | Meet Dot | voice agent (STT/TTS) + reasoning — Dot talks, you talk back | the onboarding *is* a conversation, not a form |
-| **InsForge** | Reveal + everywhere | model gateway (generate + held-out critic on **different** families) + db + deploy URL | the truth gate runs on it: a model can't catch its own confident lie |
-| **You.com** | Reveal / receipts | citation-backed web search → public-footprint facts, each cited | every web-found claim carries a source |
+---
 
-Two numbers that ARE the proof (say them out loud): **"N real people surfaced from your actual Gmail"** and **"every claim is grounded — M were cut for no evidence."**
+## Beat 0 · Landing (~5s)
+- **See / do:** a calm page — **Pebble**, a one-liner, and one button: **Sign in with Google**. Nothing to read, nothing to configure.
+- **Pebble says/does:** just an invitation (a soft glow). No "talk to our AI."
+- **Output:** the door.
+- **Feel:** safe, curious, zero friction. The promise is *"see a version of yourself,"* not *"give us your data."*
+- **Story:** you're standing in front of the mess — and all that's asked of you is one click.
+- *Tech firing:* — *(Composio on the next tap.)*
 
-## The 3-minute script
+## Beat 1 · Sign in (~5s)
+- **See / do:** click → the Google consent screen → back, you're in. That's it.
+- **Pebble says/does:** the moment you land, it **silently starts reading your world** (Gmail + contacts, live). A small corner whisper: *"reading your world…"*. The AI is invisible.
+- **Output:** you're signed in; the scrape is already running underneath.
+- **Feel:** one move and done. Something is happening *for* you — effortlessly.
+- **Story:** the effort-collapse begins. The thing you'd never do — organize your life — just started, and you didn't lift a finger.
+- *Tech firing:* **Composio** (one Google OAuth = your account **and** the data grant).
 
-| Time | Johnny does | Pebble does | What lands | Sponsor |
-|---|---|---|---|---|
-| **0:00–0:20** | Glow landing on screen. Speaks the problem. | idle glow, breathing | *"Your whole life is digitized and scattered across ten apps — and you'll never sit down to organize it. So you never actually see yourself."* The relatable mess (gx existential problem). | — |
-| **0:20–0:35** | Clicks **Connect Gmail**, grants access. | OAuth → scrape kicks off; corner whisper `pebble is reading your world…` | Signup = data grant in one move. No friction, no "go talk to an AI." | **Composio** |
-| **0:35–1:10** | **Meets Dot.** Answers ONE question live by voice ("a turning point in my life was…"). | Dot (Grok voice) wakes, asks; scrape runs underneath | The wait *is* the onboarding — charming, alive, not a spinner. You're telling your story (the only-you step). | **Grok** |
-| **1:10–1:40** | Watches his card **prefill**; says one line back to tweak it. | builds the card: name (auto) + a story of *why you do what you do / what you've built* | AI organized; *you* originate. It's your story, refined by talking. | **InsForge** |
-| **1:40–2:20** | **The reveal. Stops talking. Lets it land.** | Dot/GX-brand reveal: **a version of you** — your story + your stats | *"…oh. that's me."* Honest mirror + want-to-know. Drop the two proof-numbers here. | **InsForge** + **You.com** |
-| **2:20–2:45** | **The catch (live):** taps a line, sees *where it came from* ("from 3 emails with Teri"), corrects it casually by talking. | shows the receipt; updates + deepens live | It's grounded **and** it learns from you. The receipt *is* the correction surface — no forms. | You.com / InsForge |
-| **2:45–3:00** | Flashes the network forming; lands the tagline. | network graph animates (stretch) | *"Pebble. See your life better."* Name the stack; the vision lands. | — |
+## Beat 2 · The talking face — your first story (~30s)
+- **See / do:** a little **face appears, its mouth moving** as it talks. It asks (out loud): *"so — how do you spend your day? doing anything today you normally do?"* You tap the **mic** and just… talk. It reacts — *"oh nice, is that a most-days thing or just today?"* — you answer again. Your words appear as a **live transcript that fades** at the bottom. At ~25s: *"ok, timer's about to be up…"* → *"thanks bro, ima send u over to my buddy."*
+- **Pebble says/does:** a warm, slightly funny little buddy — listens, asks **one real follow-up**, captures your voice as part of what it knows. The scrape keeps running the whole time.
+- **Output:** your spoken story → transcript → real signal about who you are.
+- **Feel:** human and disarming. You're *talking to someone*, not filling a form — and the wait never feels like waiting.
+- **Story:** you do the only-*you* step (tell your story, in your voice); it does the only-*AI* step (organize, underneath). The onboarding **is** the loading — and it's charming.
+- *Tech firing:* **Grok** (the voice — STT/TTS; the face's mouth syncs to it). *(Its very first line is pre-warmed so it speaks instantly.)*
 
-## The live-app flow (the real clickthrough, on real endpoints)
+## Beat 3 · Make your card — the creative wait (~10–20s)
+- **See / do:** *"create your profile"* — you **draw your own smiley face** and pick colors from the **three dots** around it. Then *"design your card background"* — choose a **gradient**, play with its heights and color combos.
+- **Pebble says/does:** stays out of the way — you're making something that's *yours* while it finishes reading your world.
+- **Output:** your smiley (your mark) + your card's look — your soon-to-be **node**.
+- **Feel:** playful, expressive, ownership. Anticipation builds — you're decorating the card that's about to be filled with the truth of you.
+- **Story:** you originate (your face, your colors); the machine organizes. Identity as something you *craft*, not a datasheet.
+- *Tech firing:* — *(You.com + the engine are finishing underneath.)*
 
-1. **Landing** — "Pebble", one-liner, the interactive glow. CTA: **Connect Gmail**.
-2. **Connect** — Composio Gmail OAuth → `POST /ingest` kicks the scrape; WS `scrape_progress` drives the corner artifact.
-3. **Meet Dot** — voice page; each answer → the model; Dot's reply streams (voice + text). Covers scrape latency.
-4. **Build your card** — answers + scrape → `generate` prefills the card; "looks good" emits, or keep talking → regenerate. Held-out critic gates every version (grounded or cut).
-5. **Reveal** — cards spread in the Dot/GX brand: **Profile · Story · Stats** (Network = stretch). Each card carries its receipts.
-6. **Correct by talking** — tap a claim → see its source → say what it means → graph/story updates live (`correct` → regenerate → re-critic).
+## Beat 4 · The reveal — "that's me" (THE HERO)
+- **See / do:** the scrape finishes; the **background blurs**; **your card animates in — now full of your info — and becomes your node.** You **click it → all your cards spread open**: your **story**, your **stats**, your **people**.
+- **Pebble says/does:** shows you **a version of yourself** — and every single line shows **where it came from** (*"from 3 emails with Teri"*, a cited link). Nothing is invented; anything it couldn't trace was **cut**.
+- **Output:** your **dossier** — the story of *why you do what you do*, your numbers (who you lean on, how many people surfaced), your relationship graph — all grounded.
+- **Feel:** the dopamine *and* the **"oh whoa."** Recognition: *that's actually me.* And you trust it because you can see the receipts — it read your real life, it didn't guess.
+- **Story:** the payoff the whole thing was built for. Blind to yourself → **you see yourself**, organized, in one place, reflected back honestly. The mirror. *"I see my life better now."*
+- *Tech firing:* **InsForge** (the generator + the **held-out critic** on a different model family that cuts anything ungrounded) · **You.com** (the cited web receipts).
 
-## Everything live (the call) — and the one engineered half-half
+## Beat 5 · The map — you're not alone
+- **See / do:** your node drops onto a shared **map** — and there's **Knot, Dot's buddy** (the one she sent you to). Other nodes are there; Knot sits on a line between two of them. Click it: he hands you a **little generated story** — *"here's how your two stories connect."*
+- **Knot says/does:** finds the **real overlap** between two dossiers (shared people, the same startup space, how you each tell your day), grounded **on both sides**, and narrates it in Dot's voice.
+- **Output:** a node-map; a **semantic story link** between you and someone else.
+- **Feel:** serendipity and belonging — *we're part of the same world.* Your story isn't an island; it rhymes with others'.
+- **Story:** from seeing yourself → **seeing yourself in a larger context** ("you are the five people around you"). Perspective becomes connection.
+- *Tech firing:* the engine over **two** dossiers + the same held-out critic (the link's claims trace to a *shared* signal, or they're cut).
 
-Pebble runs **live, end to end**: Composio Gmail, the Grok voice agent, You.com scrape, InsForge generate + held-out critic. **No backup video, no replay branch** (founder call — *"trust me, you'll make them work"*). We make live *work* by hardening it — the [gotchas](./reference/HACKATHON-GOTCHAS.md) are the playbook: CORS verified, env asserted at boot, every seam logged with count+latency, LLM fan-out throttled, write→read-back proven, retries on external calls, and **fail-loud** — any node failure shows a red FAILED badge, never a silent fake.
+---
 
-The **one** engineered half-half (CLAUDE.md §2): **Dot's first voice line is a cached Grok response** (`// DEMO_CACHE:` — real Grok TTS, precomputed + `prewarm()`ed) so she speaks the instant you land, zero cold-start. Every line after is live. That's the only cache; the logic is always live.
+## What it means (the close)
 
-On stage: speak/type one answer live to prove it — *"this is my real Gmail; the reasoning is live."*
+In about a minute and a half, a normal person — someone who would *never* sit down to journal or organize their life — handed over nothing but a sign-in and a 30-second chat, drew a smiley, and walked away **seeing themselves clearly**: their story in their own words, grounded in their real life, and connected to other people. That's the part only AI could collapse, and the meaning only they could make. **That's Pebble.**
 
-## Pitch framing (kill-lines, quotable)
-
-- *"Pebble doesn't tell you who you are. It shows you — from your actual life — and lets you decide."* (only-AI / only-you)
-- *"Machines prove; you mean."* (SOTARE #30)
-- *"Every line traces to something real. No horoscopes."* (the grounding gate)
-- *"People want to be told who they are. Pebble earns the right to — because it read your actual world."*
-
-## Q&A pre-bakes
-
-- **Is this real?** → *The logic is always live; the only cached thing is Dot's first hello.* Everything else runs on my real Gmail, right now.
-- **Couldn't any chatbot do this?** → *It has no context. The moat is your real Gmail + the grounding gate that cuts anything it can't trace. A held-out critic on a different model family catches the confident lie.*
-- **How is the AI not creepy?** → *It surfaces; it never concludes. Observational language, never clinical. You correct it by talking. It's a mirror, not a verdict.*
-
-## Cut for the demo
-
-Live OAuth re-grant on stage (use the connected account); multi-user/accounts; PNG share + card flip (layer if time); MBTI/personality card (shareable, if time); deep "little-by-little" prompting loop; the **network graph beyond a single animated reveal** (open endeavour).
+## Honesty (engineered half-half — say it out loud if asked)
+Everything is **live**: Composio reads your real Gmail, You.com cites the real web, the held-out critic really cuts ungrounded claims (it catches a planted lie — verified). **Two things are cached — both `// DEMO_CACHE:`, both produced by the same live pipeline:** Dot's *first* hello (pre-warmed so she speaks instantly), and the **friend nodes' input** (their dossiers are real pipeline output; only their input emails are recorded so I don't need four people's Gmail on stage — flippable to a live account with one flag). No backup video; any failure shows a loud red badge — never a fake. *"This is my real account; the reasoning, grounding, and critic are all live — and I can flip any friend to their real Google with one flag."*

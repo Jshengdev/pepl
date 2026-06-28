@@ -16,6 +16,8 @@ Append here; don't invent scope (LOOP-FRAMEWORK gotcha). Owner in [brackets]. Th
 - **Remove the hardcoded "Johnny/Sarah/Teri" subject hint** — ring-0 identity comes from `deriveIdentityFromGmail` (live); real people come from the connected account.
 - **`COMPOSIO_API_KEY` is the one blocker** — empty row in `backend/.env`. Johnny drops it + connects his Google (`composio add gmail`); set `COMPOSIO_MODE=live`.
 - S0/S1 (scaffold + stub pipe) unaffected — the swap is at S2 ingest. CONTRACTS stay source-agnostic; DOUBLES-PORT §4 maps the scrape onto Signal/Person/Edge/Story.
+- **Build to [DESIGN-GOALS.md](./DESIGN-GOALS.md)** (backend MVP per page: endpoints + shapes + done-when + the sequenced S2a→S3c alignment fix). Front-end is deferred (Johnny supplies a per-page example) — build the backend to those contracts. Pin the **Reveal payload** shape there into `types.ts` (`WowCard`→`StatCard`; add `signalId` receipts to facts/stats).
+- **[VERIFICATION.md](./VERIFICATION.md) is the realignment board** — per-step should-work vs working-now (verified by RUNNING it 2026-06-28: engine 6/6 GREEN live, but on the precached corpus with hardcoded names). Build the punch list S2a→S3c; keep each step's 🔍 verify green.
 
 ## Still open
 

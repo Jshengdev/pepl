@@ -1,45 +1,59 @@
 # pepl — GOAL (the ultracode workflow the loop runs)
 
-This is the kickoff the **execution-loop window** runs (`/goal docs/GOAL.md` in Claude Code, or the orchestrator-script equivalent — see LOOP-FRAMEWORK "gotcha #1"). It builds the gx product on pepl's engine, validated by a held-out grounding judge.
+This is the kickoff the **execution-loop window** runs (`/goal docs/GOAL.md` in Claude Code, or the orchestrator-script equivalent — see LOOP-FRAMEWORK "gotcha #1"). It builds the **Pebble v3 experience** on pepl's already-GREEN engine, validated by a held-out grounding judge. **The engine is done and proven; this workflow builds the BOUNDARY + the EXPERIENCE around it — it does not rebuild the engine.**
+
+> **STEP 0 — speak the grounding first.** Read [GROUNDING.md](./GROUNDING.md) (the verbatim WHY/WHAT/HOW/GATE) and hold every decision to it. Discrete per-beat stories live in [goals/](./goals/) — each is topped with that grounding.
 
 ## STEP 1 — Read context IN ORDER, then confirm scope (mandatory gate)
 
-Read, in this order:
-1. `../CLAUDE.md` — how we build (MVP-first, demo-path-sacred, no silent fallbacks, engineered half-half).
-2. `docs/VISION.md` — what pepl is and the demo that wins.
-3. `docs/SCOPE-LOCK.md` — the ONE problem + crystal I/O + journey + CUT list.
-4. `docs/ARCHITECTURE.md` — the engine / architecture (lean, code reads as clean, original pepl).
-5. `docs/LOOP-FRAMEWORK.md` — stage gates, CP-1…CP-7, the held-out judge, replay.
+1. `../CLAUDE.md` — how we build (MVP-first, demo-path-sacred, **no silent fallbacks**, engineered half-half).
+2. `docs/GROUNDING.md` — the verbatim intent every build decision serves.
+3. `docs/EXPERIENCE.md` — the v3 flow (sign-in → talking-face onboarding → draw-your-smiley → lunchbox dossier reveal → node + connector).
+4. `docs/DESIGN-GOALS.md` — the backend MVP per page (endpoint + I/O + engine + done-when, the Dossier payload).
+5. `docs/DEMO-SCRIPT.md` — the experience beat by beat (the narrative + the "that's me" moment).
+6. `docs/INTEGRATION.md` — the FE↔BE wiring contract (how each endpoint/WS event binds to a UI element; Window 4).
+7. `docs/SCOPE-LOCK.md` — the ONE problem + crystal I/O + journey + CUT list.
+8. `docs/CONTRACTS.md` — the zod shapes (→ `backend/src/types.ts`); **trust the code where it has moved past the doc.**
+9. `docs/VERIFICATION.md` — what's verified by RUNNING it. **Parts are corrected as of the backend-lock pass; trust the live code over any stale row.**
+10. `docs/reference/CONNECTOR-AND-FRIENDS.md` — Knot (Dot's buddy, the connector employee) + the pre-cached friend nodes (build-facing spec for S3).
+11. `docs/reference/NARRATOR-THE-DOT.md` — Dot's voice DNA; Knot inherits it verbatim.
+12. `docs/reference/DOUBLES-PORT.md` — the ported "find everything about the user" engine + the doubles↔pepl differentiation.
+13. `docs/reference/HACKATHON-GOTCHAS.md` — the landmine map (live-by-default, badge it, verify the seam before building on it).
+14. `docs/STACK.md` — InsForge (db+gateway+deploy) · Composio (auth+ingest) · You.com (citations) · Grok (Dot voice).
 
-Then **confirm scope in ONE paragraph** before authoring anything:
-- Restate the ONE problem.
-- Crystal input shape · crystal output shape.
-- The hero / "catch" moment.
-- The integrations and where each lands on screen.
+**Reality before authoring (verified by reading the code + re-running the gate):** the pipeline `ingest→extract→graph→generate→critic→cards` is **real + held-out-gated + GREEN** (`STUB_MODE=1 tsx src/test-e2e.ts` → 6/6; the live run on the gx corpus emit-grounded with the planted-lie caught, ~35s). Composio connect routes, `liveIngest`, the You.com footprint (`footprint.ts`), the closeness engine (`extractors/gmail.ts`), `signalize.ts`, and the store (`memory/store.ts`) are **already built** — but **UNVERIFIED against a real account** (the one blocker: `COMPOSIO_API_KEY` + `composio add gmail`). `graphNode.live` is **already de-hardcoded** (generic ring placement, no Sarah/Teri assert — keep the `:102-112` thin-graph guard); **TWO** hardcodes remain to rip: the `extractNode.live` prompt hint (`graph.ts:55-56`) AND a silent `TEST_USER_ID`/`INGEST_USER_ID` fallback in `ingest.ts` (an ephemeral request with no `userId` falls back to a specific mailbox — a §2 silent fallback; throw in live mode). `seededWrong` still fires in `graphNode.live` (`graph.ts:114-130`) and must be dropped (v3 has no correction beat).
 
-If SCOPE-LOCK is still `DRAFT` / integrations are `TODO`, flag it in `docs/OPEN-QUESTIONS.md` and get confirmation — don't invent scope.
+Then **confirm scope in ONE paragraph** before authoring: restate the ONE problem (people are blind to themselves; AI organizes the mess and reflects it back, grounded); crystal input/output (the **Dossier** — the bento of 5 cards × ~5 grounded bits); the hero (sign-in → live scrape → **lunchbox dossier reveal** → "that's me"; **Knot the connector** is the ceiling); the integrations + where each lands (Composio = sign-in+ingest · Grok = Dot's talking face · InsForge = generator+held-out critic+db+deploy · You.com = the cited web receipts). If SCOPE-LOCK is `DRAFT` / integrations are `TODO`, flag in `docs/OPEN-QUESTIONS.md` — don't invent.
 
 ## STEP 2 — Author and run the workflow (staged, live-tested from the first node)
 
-Build the journey from SCOPE-LOCK as typed nodes (`defineNode()`, zod at every boundary), streaming each node over WS so the UI lights up live.
+Build the **v3 journey** as typed nodes (`defineNode()`, zod at every boundary), streaming each over WS so the front-end lights up live. **Demo path is sacred:** sign-in → Dot onboarding → live scrape → **lunchbox reveal** → you-as-a-node → Knot.
 
-- **S0 Scaffold** — ✅ already done (Next.js `frontend/` + Hono `backend/`). Add `backend/src` skeleton from the ARCHITECTURE layout; write types from CONTRACTS. *Done when:* installs, typechecks, both `dev` servers boot.
-- **S1 Prove the pipe (STUB)** — ingest → extract → graph → render → correct → generate → critic → emit, all on canned content. *Done when:* one run animates the entire journey end-to-end, in-brand.
-- **S2 Real wiring** — swap stubs for real, node by node, live-test each: real precached ingest → live extract → live graph (seeded slightly wrong) → live generate → **held-out critic** (grounding + voice). *Done when:* one real input runs the whole journey and the hero moment lands grounded in real data; no fabricated relationships survive the judge.
-- **S3 Persistence + trace + polish** — write-through recording so a run rehydrates on refresh; seam-log every boundary; polish the demo path to the design spec. *Done when:* demo path is in-brand + recordable, a run rehydrates, replay is an honest cached real run.
-- **S4 Deploy + freeze** — public URL serves the demo path; freeze with buffer.
+- **S0 Scaffold** — ✅ done.
+- **S1 Prove the pipe (STUB)** — ✅ done. `STUB_MODE=1 tsx src/test-e2e.ts` → 6/6 GREEN.
+- **S2 Real wiring** — the work. Swap stubs for real, node by node, **live-tested each against a REAL connected account.** No precache except Dot's first line + the friend nodes; **no hardcoded names**. Sub-steps (each its own [goals/](./goals/) story, each gated on run+observed):
+  - **S2-PRE** Live seam + CORS preflight. Set `COMPOSIO_API_KEY`, `composio add gmail`, `COMPOSIO_MODE=live`; `envReadiness()` SET/MISSING + active-mode print at boot. *Done:* `initiate` returns a REAL Google consent URL; `/status` → `{connected:true,email}`; `OPTIONS /run` returns `Access-Control-Allow-Origin`; boot prints SET/MISSING + active mode.
+  - **S2a** **LIVE ingest + de-hardcode.** Run `liveIngest`; **rip the `extract.live` hint (`graph.ts:56`); DROP `seededWrong`** (`graph.ts:114-129`; leave `correctGraph`/`/correct` dormant); add `mode` to the response; extend `test-e2e` with a "zero hardcoded names on a live account" assertion. *Done:* a **non-Johnny** account yields THEIR signals + THEIR graph, **no Johnny/Sarah/Teri, no crash, seededWrong empty**, logs `[pepl:ingest] gmail n=.. cal n=.. web n=..`.
+  - **S2b** **You.com footprint** → cited Signals. *Done:* `[pepl:ingest:footprint] claims=N sources=M`; `story.groundedIn` cites a real You.com URL.
+  - **S2c** **The lunchbox reveal (the Dossier · THE HERO).** Extend `types.ts` with the **bento dossier** — `Grounding` (`signal`|`computed{from[],critic}`|`user{source}`), `Bit` (`ok{label,value,grounding}`|`failed{label,triedSource}`), `DossierCard` (5 kinds × 3–6 bits), `Dossier{cards,smiley,proof,mode}` — **superseding** the loose `Reveal`/`WowCard`/`MbtiCard` deck (Story/RelationshipGraph ride along as bit values). Add `buildDossier()`/`dossierNode` after `cardsNode`; expose `POST /reveal {userId} -> Dossier`. **Grounding asserted not trusted:** every `signalId` / `computed.from` id MUST be in the signal set or `buildDossier` THROWS (mirrors `generator.ts`). Synth bits → `kind:"computed",critic:true`; counts → `critic:false`; smiley → `kind:"user"`. *Done:* `/reveal` returns 5 cards / ~25 bits, every `ok` bit grounded, `proof{peopleSurfaced,claimsCut}` + `mode:"live"`, ungrounded cut, unresolvable bit → `failed` (red badge); `[pepl:dossier] cards=5 bits=25 failed=0 mode=live`.
+  - **S2d** **Card persistence** (drawn smiley). `POST /api/card {userId, smiley, smileyColors?, cardGradient?}` persists the avatar/style; `/reveal` (`Dossier.smiley`, `grounding.kind:"user"`) + `/api/map` read it back. *Done:* a smiley round-trips (write→read-back asserted).
+  - **S2e** **Talking-face Dot.** Relax onboarding (drop 3-field `OnboardingAnswers`; each turn → `Signal{source:"onboarding"}`); `GET /api/dot/intro` (**`// DEMO_CACHE:` prewarmed first line + the ONE question**) + `POST /api/dot/turn` (Grok STT→witty reply→TTS, **≥1 follow-up**, `wrapUp`→ "timer's about to be up" + "thanks bro, ima send u over to my buddy", `done:true`, 30s). *Done:* `/intro` instant; `/turn` witty + ≥1 follow-up; `wrapUp` returns the sign-off; each turn a queryable onboarding Signal; autoplay-block returns text.
+  - **S2f** **Connect kicks ingest + WS on the real request.** On `/status connected=true`, background-kick `liveIngest` streaming `scrape_progress → node_start/done → cards_ready` **on the path the front-end hits** (connect the socket BEFORE triggering; WARN when clients=0). *Done:* a fresh connect produces that WS tape; `/reveal` ready exactly when `cards_ready` fires.
+- **S3 Persistence + friend pre-cache + Knot (the map) + polish** — only after S2 is green. Assert write→read-back (persistence-LARP guard). Seed **`// DEMO_CACHE:` friend dossier(s)** — Johnny's real gx crew (floor 1 = Sarah; rec. 3 = +Teri +Shawn; ceiling ~5) — produced by the SAME `runPipeline` on a cached friend INPUT (`data/friends/<name>.json`, real-shaped, real utterances re-sliced by subject), then `saveDossier(friend-<name>)`. Build `GET /api/map -> {nodes:MapNode[], mode}` + `POST /api/map/link {a,b}` = **Knot's pipeline** (sort the pair; overlap-find where each `Similarity` cites ONE real signal from EACH side or THROW; write the story; reuse `criticNode` TWICE — A-claims vs A-signals, B-claims vs B-signals; survives iff grounded on BOTH; merged flags → `regenToGrounded` ≤2 → 422; cache by sorted-pair key). `link:null` + WARN on honest 0-overlap (never a canned rhyme). *Done:* two+ nodes render (drawn smileys); a link's every beat traces to a **shared** signal on BOTH sides; an invented overlap is CUT; the curated non-overlapping pair returns `link:null` (Knot's planted-lie test); a saved dossier rehydrates. **Full spec: `reference/CONNECTOR-AND-FRIENDS.md`.**
+- **S4 Deploy + freeze** — fill InsForge gateway slugs (or stay on the openrouter-via-InsForge key); public URL serves the demo path; **rehearse the live path (no backup video)**; freeze with buffer.
 
-Run `backend/src/test-e2e.ts` as the CLI gate at each stage (`exit 0` = pass). It must assert the hero beats: graph built from real data, generated output grounded (every claim → a signal), zero invented people/facts.
+Run `backend/src/test-e2e.ts` as the CLI gate at each stage (`exit 0` = pass): graph from **real connected-account data with zero hardcoded names**, generated output **grounded** (every claim → a real signal), zero invented people/facts (held-out judge `emit`, negative control caught), the persistence roundtrip, and (S3) the two-sided connector grounding + its negative control.
 
 ## STOP CONDITION (done when ALL are true, not before)
 
-- A real (precached) input runs the **entire** journey live, end-to-end.
-- The relationship graph is built from real data; the correction beat updates it; the generated bio/story is **grounded** — every claim traceable, none invented (held-out judge `emit`, `fabricatedClaims` empty).
-- Every panel reads a real endpoint/event; no silent stubs (failures show a visible FAILED badge).
-- The demo path matches `docs/DEMO-SCRIPT.md` and is in-brand.
-- Public deploy URL serves the demo path.
-- The core reads as clean, original pepl and lands lean (fewest lines).
+- A real **connected account** (live Composio Gmail+Calendar + You.com) runs the **entire v3 journey** live, end-to-end: sign-in → talking-face Dot → live scrape → **lunchbox dossier reveal** → you-as-a-node. **Only Dot's first voice line + the friend nodes are cached** (both `// DEMO_CACHE:`, both swap-to-live-able).
+- The graph is built from real data with **zero hardcoded names**; `seededWrong` empty; the dossier's story/stats/throughline **grounded** — every bit traceable, none invented (held-out judge `emit`, `fabricatedClaims` empty); the negative control still catches a planted lie.
+- The **Dossier** carries a `Grounding` receipt on every `ok` bit, plus `proof{peopleSurfaced,claimsCut}`, `smiley`, honest `mode`; any unresolvable bit is a red `failed` badge, never a canned value.
+- **Knot** (do-if-time) links two dossiers grounded only in shared signals, gated by the held-out critic **per side**; honest 0-overlap returns `link:null`.
+- Every panel reads a real endpoint/event; **no silent stubs** — any failure shows a visible red FAILED badge (WS `failed` + non-200).
+- The demo path matches `docs/DEMO-SCRIPT.md` and is in-brand; public deploy URL serves it.
+- The core reads as **clean, original pepl** and lands lean (Knot is ONE new file + a friends data file + 2 routes + 4 small zod types + a 1-line generic widen of `regenToGrounded`; reuse `criticNode`/`complete` tiers/`regenToGrounded`).
 
 ## Constraints (always on)
 
-CP-1…CP-7 from LOOP-FRAMEWORK + root CLAUDE.md §2 (no silent fallbacks; engineered half-half only) + §1 ponytail ladder (fewest lines/deps/files). Demo path is sacred; WIP = 1; "done" = run + observed output.
+Root `CLAUDE.md` §2 (**no silent fallbacks**; throw or render a red FAILED badge; engineered half-half only — cached INPUT/first-line/friend-nodes with the real pipeline running the same shape, labeled `// DEMO_CACHE:` naming what/why/how-to-run-live) + §1 ponytail (reuse the built engine; fewest lines/deps/files) + §4 (verbose **default** logging on the SHARED path; WARN-with-inputs on 0-result; print active mode + envReadiness at boot). **Held-out critic** asserted at boot AND per call (anthropic generator ≠ qwen critic) — for the reveal AND Knot. Live-by-default (`STUB_MODE=0 COMPOSIO_MODE=live LLM_PROVIDER=openrouter`); cache only via explicit labeled flags. Live gate: `STUB_MODE=0 COMPOSIO_MODE=live LLM_PROVIDER=openrouter npx tsx --env-file=.env src/test-e2e.ts`. Demo path sacred; WIP = 1; **"done" = a run command + observed output.**

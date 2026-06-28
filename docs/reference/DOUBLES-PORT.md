@@ -85,7 +85,7 @@ doubles' 7 sources collapse to **Composio + You.com + InsForge + Grok** (the loc
 - **Story** — **keep** pepl's generator + held-out critic **unchanged**. The port's win: footprint Signals carry real URL sources, so `groundedIn` citations point at You.com receipts and the relationship Signals give "from N emails with X" provenance. doubles' lore/worldview synthesis is **not** ported — pepl's Story is the equivalent.
 
 ### Env keys
-- **`COMPOSIO_API_KEY` — THE one missing key** (a row exists in `backend/.env` but empty). Needed for OAuth + every pull. Demo: connect Johnny's Google once via `composio add gmail`. Also set `COMPOSIO_MODE=live`.
+- **`COMPOSIO_API_KEY` — THE key for live ingest (already set in .env; remaining = verify a connected Google account + one live run)** (a row exists in `backend/.env` but empty). Needed for OAuth + every pull. Demo: connect Johnny's Google once via `composio add gmail`. Also set `COMPOSIO_MODE=live`.
 - Already set + validated: `YDC_API_KEY` (You.com footprint), `INSFORGE_OPENROUTER_API_KEY`/`OPENROUTER_API_KEY` (extract/generate/critic gateway), `XAI_API_KEY` (Grok/Dot voice).
 - **Not needed** (dropped/rebuilt on You.com): SixtyFour, Firecrawl, TinyFish, HeyReach, X bearer, GitHub (banned per founder), DATABASE_URL (in-memory first).
 

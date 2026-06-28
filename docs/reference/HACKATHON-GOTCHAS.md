@@ -49,7 +49,7 @@ Distilled from three of Johnny's prior hackathon builds — **`dot`** (reflectiv
 - **CORS preflight blocks Next→Hono** — instant FAILED badge / empty UI. → Wire + preflight-verify CORS day one. *(sayhello)*
 - **Persistence LARP** — saves but vanishes/stale on re-read → page re-runs model or shows empty. → write→read-back assertion at every store boundary. *(dot)*
 - **Demo beat on the wrong code path** — wired into a durable/background job the frontend never hits. → trace the real request; every beat on that request. *(dot)*
-- **Wifi flake / live call stalls, no backup** — whole demo dies with empty UI. → backup video + disk-cache reads + fall back on error. *(dot, caltech)*
+- **Wifi flake / live call stalls, no backup** — whole demo dies with empty UI. → pepl: NO backup video (founder call) — harden + rehearse the live path; fail-loud red badge, never a fallback. *(dot/caltech used videos; pepl does not.)*
 - **Over-claiming / forbidden framing in a sensitive domain** — clinical diagnosis, mind-reading, mishandled crisis transcript. → observational language only; deterministic crisis path separate from the LLM. *(caltech, dot)*
 - **Real integration shipped as throw-placeholders** ("lands at S2") — only the stub path ever proven. → wire ONE real input end-to-end before widening. *(sayhello)*
 - **Concurrent LLM fan-out overwhelms the endpoint** — times out, loses a full run. → semaphore ~6, generous timeout, per-item skip-on-error, frontend drops malformed. *(caltech)*
@@ -107,5 +107,5 @@ Distilled from three of Johnny's prior hackathon builds — **`dot`** (reflectiv
 - **Map the build to the judging rubric explicitly** (axes × weight, "how we win each") and decide demo choices against scoring, not vibes.
 - **Lead with the moment the decision goes wrong**, not the solution; cold-open in present tense; hold a **silent hero beat** while the engine visibly works on screen (don't talk over the reveal).
 - **Customer-as-hero story spine used consistently** across the generate prompt, judge calibration, slides, and the Devpost — one coherent narrative everywhere.
-- **Freeze ~1hr before deadline, submit ~10min before** — the last hour is rehearsal + backup video, not building. Pre-bake Q&A answers.
+- **Freeze ~1hr before deadline, submit ~10min before** — the last hour is rehearsal (NO backup video — founder call), not building. Pre-bake Q&A answers.
 - **Only chase prizes already ON the journey line** — never add a node just to claim a badge (score = expected-$ × feasibility / wiring-minutes).

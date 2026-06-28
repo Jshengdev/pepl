@@ -22,7 +22,7 @@ the Story window and don't block the core):
   graph(seeded-wrong) → generate → critic → emit — streamed over WS, with a CLI
   gate backend/src/test-e2e.ts (exit 0 = pass). Verify: one run animates the whole
   journey on stubs.
-- S2: wire real, node by node. Assume a precached real export as the data source
+- S2: wire real, node by node. Use the LIVE Composio Gmail data source (cache only Dot first line + friend-node inputs)
   until told otherwise; the critic runs on a held-out model family ≠ the generator
   (corpus = signals only).
 

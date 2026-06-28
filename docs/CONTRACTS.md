@@ -1,6 +1,8 @@
 # pepl — CONTRACTS (the law)
 
-The zod shapes at every backend boundary. The build implements these as `backend/src/types.ts` and imports them everywhere; the frontend renders only these. **Source-agnostic** — the data source (precached export / Gmail / answers) doesn't change these shapes, so the build can start now.
+The zod shapes at every backend boundary. The build implements these as `backend/src/types.ts` and imports them everywhere; the frontend renders only these. **Source-agnostic** — the data source doesn't change these shapes.
+
+> **⚠️ SUPERSEDED for the v3 hero (2026-06-28):** the reveal + connector shapes are now the bento **`Dossier`** (`Grounding`/`Bit`/`DossierCard`) + **`Similarity`/`ConnectionStory`/`MapNode`** — see [DESIGN-GOALS.md](./DESIGN-GOALS.md) Part 5/7 + [reference/CONNECTOR-AND-FRIENDS.md](./reference/CONNECTOR-AND-FRIENDS.md). `WowCard`/`MbtiCard`/the loose `Card` deck + the 3-field `OnboardingAnswers` **fold into** `Bit`/`Grounding` + onboarding `Signal`s. Add the new zod to `types.ts` in build stories 03/05; the shapes below are the engine substrate (Signal/Person/Edge/Graph/Story/CriticVerdict — still the law), not the hero contract.
 
 ## Core entities
 

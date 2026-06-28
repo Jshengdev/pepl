@@ -53,11 +53,12 @@ Mapped to `EXPERIENCE.md`'s flow. Copy lives as data (one `script.ts`), phase co
 - `"first, let's make your card. don't overthink it."`
 - `"nobody knows their own one-liner. that's literally my job."`
 
-**Three onboarding questions** (answer by voice *or* text)
-1. `"tell me about a turning point — a before-and-after moment in your life."`
-2. `"the one thing you're weirdly good at. brag a little, i won't tell."`
-3. `"what should someone know to be a good friend to you?"`
-- between answers: `"okay. noted."` → `"one more."`
+**The onboarding — a 30-second back-and-forth** (Dot asks → you answer by mic → ≥1 follow-up → you answer → wrap at ~25s)
+- seed: `"so — how do you spend your day? doing anything today you normally do?"`
+- a follow-up (one, reacting to the answer): `"oh nice — is that a most-days thing or just today?"` / `"wait, say more about that."`
+- the wrap (~25s, 5s before the 30s mark): `"ok, timer's about to be up…"`
+- sign-off: `"thanks bro, ima send u over to my buddy."`
+*(Personality polish later — for v1 just: talk · respond · one follow-up · respond · wrap.)*
 
 **Scrape running (system whisper, corner artifact)**
 - `[whisper] "pebble is reading your world…"`

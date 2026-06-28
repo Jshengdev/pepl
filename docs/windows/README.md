@@ -9,6 +9,7 @@ pepl is built across **three windows**, each its own orchestrator / command cent
 | **1 · Tech & Architecture** *(this repo's current window)* | what concepts/architecture to use, what to keep as context, backend architecture + CONTRACTS, the lean build | [tech-porting.md](./tech-porting.md) |
 | **2 · Story & Experience** | gx + hackathon theme → user journey, experience, narrative, demo script, page specs | [story-experience.md](./story-experience.md) |
 | **3 · Build Loop** | the autonomous builder: build backend to the locked specs, wire a throwaway test-frontend, loop on stage gates | [build-loop.md](./build-loop.md) |
+| **4 · FE↔BE Integration & Polish** | wire Johnny's per-page front-end onto the live backend (the seam), fail-loud/loading states, experience polish | [integration.md](./integration.md) · contract: [../INTEGRATION.md](../INTEGRATION.md) |
 
 ## How they coordinate
 
@@ -17,6 +18,8 @@ Window 1 (tech)  ──CONTRACTS + architecture spec──────▶ Window
 Window 2 (story) ──journey + DEMO-SCRIPT + page specs─▶ Window 3 (build loop)
 Window 1 ◀────── tech constraints / cheap-vs-costly ──▶ Window 2
 Window 3 ──────── status: what's wired / green / blocked ─▶ Windows 1 & 2
+Window 3 (backend endpoints) ─▶ Window 4 (the seam) ◀─ Window 2 (the feel) + Johnny's FE examples
+Window 4 ──────── the demo path runs end-to-end on a real account ─▶ all
 ```
 
 Windows **1 & 2 lock the specs** (run first + continuously); **Window 3 executes** against whatever is locked. A window never invents another window's output — if it's missing, flag it in `../OPEN-QUESTIONS.md`, don't guess.

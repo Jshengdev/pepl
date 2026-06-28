@@ -1,6 +1,8 @@
 # pepl — SCOPE-LOCK
 
 > **Status: LOCKED v1 — 2026-06-28.** Reflects Johnny's redirect (everything live, voice-agent Dot, "see a version of yourself" as hero). The build loop runs against this. **Redline any line and it flips back to DRAFT.**
+>
+> **v3 refinement (2026-06-28):** journey = talking-face (**ONE** question, 30s, ≥1 follow-up) → draw-smiley card → **lunchbox dossier reveal** → node + **Knot** connector. **No correction beat** (`seededWrong` dropped). Canonical flow = [EXPERIENCE.md](./EXPERIENCE.md) v3 + [GOAL.md](./GOAL.md); any "3 questions / correct-the-graph" reference below is superseded.
 
 ## The ONE problem (one paragraph)
 
