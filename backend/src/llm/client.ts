@@ -15,11 +15,17 @@ const MODELS: Record<string, Record<Tier, string>> = {
     CRITIC: "", // pepl: TODO fill from docs.insforge.dev at S2 — no invented slugs
     EXTRACT: "", // pepl: TODO fill from docs.insforge.dev at S2 — no invented slugs
   },
+  nebius: {
+    GENERATOR: "openai/gpt-oss-120b-fast",
+    CRITIC: "Qwen/Qwen3-Next-80B-A3B-Thinking-fast", // held-out: Qwen family != openai family
+    EXTRACT: "openai/gpt-oss-120b-fast",
+  },
 };
 
 const ENDPOINTS: Record<string, { baseUrl: string; keyEnv: string }> = {
   openrouter: { baseUrl: "https://openrouter.ai/api/v1", keyEnv: "OPENROUTER_API_KEY" },
   insforge: { baseUrl: "", keyEnv: "INSFORGE_API_KEY" }, // pepl: TODO base URL from docs.insforge.dev at S2
+  nebius: { baseUrl: "https://api.tokenfactory.us-central1.nebius.com/v1", keyEnv: "NEBIUS_API_KEY" },
 };
 
 export { MODELS };

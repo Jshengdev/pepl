@@ -10,6 +10,7 @@ import { classifyHumanSenders } from "./extractors/sender-classifier";
 import { peopleFromEmails } from "./extractors/gmail";
 import { peopleFromEvents } from "./extractors/calendar";
 import { discoverFootprint } from "./footprint";
+import { discoverViaTavily, tavilyEnabled } from "./tavily";
 import { emailsToSignals, eventsToSignals, answersToSignals } from "./signalize";
 
 const OWNER_ID = "you";
@@ -104,7 +105,7 @@ async function liveIngest(
 
   const identity = await deriveIdentityFromGmail(userId);
 
-  const [gmail, calendar, footprint, onboarding] = await Promise.all([
+  const [gmail, calendar, footprint, tavily, onboarding] = await Promise.all([
     soft("gmail", async () => {
       // pepl: demo latency cap — the Gmail pagination dominates a live run. maxPages 6 (~150 msgs in the
       // 90d window) keeps the whole run ~<2min, and the scrape is masked by the reveal beats anyway.
@@ -123,10 +124,16 @@ async function liveIngest(
       return { signals: [...eventsToSignals(events), ...topicSignals], people, edges };
     }),
     soft("footprint", async () => ({ ...EMPTY, signals: await discoverFootprint({ name: identity.name, email: identity.email }) })),
+    // Optional second search lens (sponsor, off by default). When TAVILY_ENABLED!=="true" this is a clean no-op.
+    soft("tavily", async () =>
+      tavilyEnabled()
+        ? { ...EMPTY, signals: await discoverViaTavily({ name: identity.name, email: identity.email }) }
+        : EMPTY,
+    ),
     soft("onboarding", async () => ({ ...EMPTY, signals: answers ? answersToSignals(answers) : [] })),
   ]);
 
-  const signals = [gmail, calendar, footprint, onboarding].flatMap((s) => s.signals);
+  const signals = [gmail, calendar, footprint, tavily, onboarding].flatMap((s) => s.signals);
 
   // Radial people across both sources (dedupe by id; first source wins). The owner
   // is forced to ring 0 / closeness 1 with the DERIVED name — never hardcoded.
