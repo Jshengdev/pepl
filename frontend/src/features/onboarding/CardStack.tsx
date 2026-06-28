@@ -1,58 +1,60 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { CardFront, CardBack } from "./CardFaces";
-import type { Person } from "./types";
+import { CardFront, CardBack, ModeBadge } from "./CardFaces";
+import type { Dossier } from "@/lib/pepl/types";
 
-// A person's stack of 3 cards. Front card shows info; the two behind are flipped
-// to their gradient backs and peek to the lower-right. Tap to advance:
-//   1. the top card sweeps off to the LEFT and flips over (info → gradient)
-//   2. it tucks to the bottom of the deck while the next card slides forward a
-//      little and flips over to reveal its info
-// …cycling through all three.
+// The user's bento Dossier as a flip stack: one card per DossierCard (the 5 lunchbox
+// compartments — identity / story / stats / people / personality). The front shows that
+// card's grounded bits; the two behind peek to the lower-right on their gradient backs.
+// Tap to advance:
+//   1. the top card sweeps off to the LEFT and flips over (bits → gradient)
+//   2. it tucks to the bottom of the deck while the next card slides forward and flips to
+//      reveal its bits
+// …cycling through all of them. Mode (live/cached) + the proof numbers ride above the deck.
 
 const CARD_W = 264;
 const CARD_H = 352;
 const PEEK_X = 14;
 const PEEK_Y = 11;
+const MAX_PEEK = 2; // only the top 3 cards peek; deeper ones stack behind the third
 
 type Face = "info" | "grad";
 type StackCard = { id: number; slot: number; face: Face };
 
-const initial = (): StackCard[] => [
-  { id: 0, slot: 0, face: "info" },
-  { id: 1, slot: 1, face: "grad" },
-  { id: 2, slot: 2, face: "grad" },
-];
-
 function slotTransform(slot: number, face: Face): string {
-  const x = slot * PEEK_X;
-  const y = slot * PEEK_Y;
-  const scale = 1 - slot * 0.05;
+  const s = Math.min(slot, MAX_PEEK);
+  const x = s * PEEK_X;
+  const y = s * PEEK_Y;
+  const scale = 1 - s * 0.05;
   const rotateY = face === "grad" ? 180 : 0;
   return `translate(${x}px, ${y}px) scale(${scale}) rotateY(${rotateY}deg)`;
 }
 // the lifted-off-to-the-left, flipped pose used while a card is shuffled back
 const LIFT = "translate(-155px, -8px) scale(0.9) rotateY(180deg) rotate(-4deg)";
-const zForSlot = (slot: number) => 30 - slot * 10;
+const zForSlot = (slot: number) => 40 - slot * 6;
 
-export function CardStack({ person }: { person: Person }) {
-  const [stack, setStack] = useState<StackCard[]>(initial);
+export function CardStack({ dossier }: { dossier: Dossier }) {
+  const cards = dossier.cards;
+  const N = cards.length;
+  const [stack, setStack] = useState<StackCard[]>(() =>
+    cards.map((_, i) => ({ id: i, slot: i, face: i === 0 ? "info" : "grad" })),
+  );
   const [lifting, setLifting] = useState<number | null>(null);
   const busy = useRef(false);
 
   function advance() {
-    if (busy.current) return;
+    if (busy.current || N < 2) return;
     busy.current = true;
     const front = stack.find((c) => c.slot === 0)!;
     // Phase 1 — top card sweeps left and flips over.
     setLifting(front.id);
     window.setTimeout(() => {
-      // Phase 2 — it tucks to the back; the rest slide forward; new top → info.
+      // Phase 2 — it tucks to the back; the rest slide forward; new top → bits.
       setLifting(null);
       setStack((prev) =>
         prev.map((c) => {
-          const slot = (c.slot + 2) % 3;
+          const slot = (c.slot + N - 1) % N;
           return { ...c, slot, face: slot === 0 ? "info" : "grad" };
         }),
       );
@@ -64,12 +66,19 @@ export function CardStack({ person }: { person: Person }) {
 
   return (
     <div className="flex flex-col items-center gap-4">
+      <div className="flex items-center gap-2 text-[11px]">
+        <ModeBadge mode={dossier.mode} />
+        <span className="font-medium text-charcoal/60">
+          {dossier.proof.peopleSurfaced} people surfaced · {dossier.proof.claimsCut} claims cut
+        </span>
+      </div>
+
       <button
         type="button"
         onClick={advance}
         className="relative [perspective:1600px]"
         style={{ width: CARD_W + 2 * PEEK_X, height: CARD_H + 2 * PEEK_Y }}
-        aria-label={`flip through ${person.name}'s cards`}
+        aria-label="flip through your dossier cards"
       >
         {stack.map((c) => (
           <div
@@ -83,18 +92,20 @@ export function CardStack({ person }: { person: Person }) {
             }}
           >
             <div className="absolute inset-0 [backface-visibility:hidden]">
-              <CardFront person={person} />
+              <CardFront card={cards[c.id]} />
             </div>
             <div
               className="absolute inset-0 [backface-visibility:hidden]"
               style={{ transform: "rotateY(180deg)" }}
             >
-              <CardBack person={person} card={person.cards[c.id]} index={c.id} />
+              <CardBack card={cards[c.id]} index={c.id} />
             </div>
           </div>
         ))}
       </button>
-      <p className="text-xs font-medium text-charcoal/55">tap the stack to flip through →</p>
+      <p className="text-xs font-medium text-charcoal/55">
+        tap the stack to flip through your {N} cards →
+      </p>
     </div>
   );
 }

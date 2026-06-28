@@ -1,132 +1,127 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SocialGraph } from "../SocialGraph";
-import { PEPL_SMILEY } from "../defaults";
-import type { AvatarDesign, CardDesign, Edge, OnboardingDesign, Person, ShapeKind } from "../types";
+import { ModeBadge } from "../CardFaces";
+import { useRun } from "@/lib/pepl/useRun";
+import { reveal, getMap, mapLink } from "@/lib/pepl/api";
+import { getUserId } from "@/lib/pepl/session";
+import type { Dossier, MapLinkResp, MapNode } from "@/lib/pepl/types";
+import type { OnboardingDesign } from "../types";
 
-// Step 4 — the reveal. "Loading finishes" (a short weave), then the social graph
-// populates: the user at the center, connected to the people pepl surfaced.
+// Step 4 — the reveal. Liveness rides the ONE WS hook (useRun); data is HTTP. When the run's
+// cards land (WS cards_ready) — or immediately on a mid-run refresh, since this view usually
+// mounts AFTER the scrape finished and the past event won't replay — we fetch the real
+// payload: POST /reveal → the bento Dossier, GET /api/map → the nodes, and mapLink(you, each
+// other) → the grounded edges. No placeholder people, no fabricated bio: the graph is 100%
+// backend data.
 //
-// Placeholder people + edges until the backend lands. The user's node carries
-// their designed avatar + the 3 backings they made; others are seeded.
+// FLAG (divergence): `design` (the avatar + cards the user drew in onboarding) no longer feeds
+// the reveal — node faces come from each MapNode.smiley and the user's stack is the Dossier.
+// The drawn smiley reaches the backend via POST /api/card (story 04), which is NOT wired in
+// this file; until then the user's MapNode.smiley is null → an honest-empty face.
+// FLAG: `userId` defaults to the session id (getUserId → "johnny"); the parent (OnboardingFlow,
+// outside this task's file scope) isn't wired to pass a real per-user id yet.
+export function RevealStep({
+  userId,
+}: {
+  userId?: string;
+  // accepted for call-site compat (OnboardingFlow still passes it); the reveal no longer reads
+  // it — see the FLAG above.
+  design?: OnboardingDesign;
+}) {
+  const uid = userId || getUserId(); // || not ?? — the parent seeds "" before mount
+  const run = useRun();
+  const [dossier, setDossier] = useState<Dossier | null>(null);
+  const [nodes, setNodes] = useState<MapNode[] | null>(null);
+  const [links, setLinks] = useState<Record<string, MapLinkResp>>({});
+  const [linkErrors, setLinkErrors] = useState<Record<string, string>>({});
+  const [error, setError] = useState<string | null>(null);
+  const loadedRef = useRef(false);
 
-const USER_ID = "teri";
-
-function seededAvatar(colors: [string, string, string]): AvatarDesign {
-  return {
-    points: [
-      { angle: -Math.PI / 2, color: colors[0] },
-      { angle: Math.PI / 6, color: colors[1] },
-      { angle: (5 * Math.PI) / 6, color: colors[2] },
-    ],
-    strokes: PEPL_SMILEY.map((s) => s.map((p) => ({ ...p }))),
-  };
-}
-
-const SHAPES: ShapeKind[] = ["circle", "infinity", "rose"];
-const LIFT_SETS = [
-  [0.6, 1, 0.55, 1, 0.6],
-  [0.4, 0.7, 1, 0.7, 0.4],
-  [1, 0.6, 0.85, 0.6, 1],
-];
-function seededCards(baseOffset: number): CardDesign[] {
-  return [0, 1, 2].map((i) => ({
-    shape: SHAPES[i],
-    offset: (baseOffset + i * 4) % 12,
-    lifts: [...LIFT_SETS[i]],
-  }));
-}
-
-function buildPeople(design: OnboardingDesign): Person[] {
-  return [
-    {
-      id: USER_ID,
-      rank: 1,
-      name: "teri shim",
-      age: "21 years old",
-      hometown: "Hong Kong, HK",
-      birthday: "Mar 28, 2005",
-      occupation: "Student @ USC, Designer at Lemma",
-      pos: { x: 25, y: 54 },
-      avatar: design.avatar,
-      cards: design.cards,
-    },
-    {
-      id: "noa",
-      rank: 2,
-      name: "noa kim",
-      age: "23 years old",
-      hometown: "Seoul, KR",
-      birthday: "Jul 14, 2003",
-      occupation: "PM @ Figma",
-      pos: { x: 74, y: 17 },
-      avatar: seededAvatar(["#ef9a4a", "#4f9a93", "#9a6fc0"]),
-      cards: seededCards(2),
-    },
-    {
-      id: "leo",
-      rank: 3,
-      name: "leo park",
-      age: "25 years old",
-      hometown: "Lisbon, PT",
-      birthday: "Nov 2, 2001",
-      occupation: "Founder @ tide",
-      pos: { x: 76, y: 80 },
-      avatar: seededAvatar(["#1f5fa6", "#ea6a52", "#c3c66a"]),
-      cards: seededCards(1),
-    },
-    {
-      id: "maya",
-      rank: 4,
-      name: "maya chen",
-      age: "22 years old",
-      hometown: "Taipei, TW",
-      birthday: "Sep 9, 2004",
-      occupation: "Eng @ Notion",
-      pos: { x: 48, y: 24 },
-      avatar: seededAvatar(["#d65b97", "#4f93d6", "#7faa63"]),
-      cards: seededCards(3),
-    },
-  ];
-}
-
-const EDGES: Edge[] = [
-  { from: "teri", to: "noa", label: "both designers" },
-  { from: "teri", to: "leo", label: "up building at 2am" },
-  { from: "teri", to: "maya", label: "far from home" },
-  { from: "noa", to: "leo", label: "ex-figma" },
-  { from: "maya", to: "leo", label: "first-time founders" },
-];
-
-export function RevealStep({ design }: { design: OnboardingDesign }) {
-  const [ready, setReady] = useState(false);
   useEffect(() => {
-    console.log("[pepl:reveal] weaving graph…");
-    const t = window.setTimeout(() => {
-      setReady(true);
-      console.log("[pepl:reveal] graph populated");
-    }, 1600);
-    return () => window.clearTimeout(t);
-  }, []);
+    // A node failure on the wire = fail loud, never hide.
+    if (run.failed) {
+      setError(`${run.failed.node}: ${run.failed.error}`);
+      return;
+    }
+    if (loadedRef.current) return;
 
-  const people = buildPeople(design);
+    let cancelled = false;
+    async function load() {
+      console.log(`[pepl:reveal] load user=${uid} (cardsReady=${run.cardsReady})`);
+      let d: Dossier;
+      let m: { nodes: MapNode[] };
+      try {
+        [d, m] = await Promise.all([reveal(uid), getMap()]);
+      } catch (e) {
+        // The reveal/map fetch failed — surface it (a red badge). If this was a too-early
+        // rehydrate attempt, cards_ready re-runs this effect and clears it on success.
+        if (!cancelled) setError((e as Error).message);
+        return;
+      }
+      if (cancelled) return;
+      loadedRef.current = true;
+      setError(null);
+      setDossier(d);
+      setNodes(m.nodes);
+      console.log(
+        `[pepl:reveal] dossier cards=${d.cards.length} mode=${d.mode} nodes=${m.nodes.length}`,
+      );
 
-  if (!ready) {
+      // One mapLink per pair we draw: you ↔ each other node. A single edge failing is local
+      // (a red badge on that edge); it does not sink the whole reveal.
+      const peers = m.nodes.filter((n) => n.userId !== uid);
+      await Promise.all(
+        peers.map(async (n) => {
+          try {
+            const lk = await mapLink(uid, n.userId);
+            if (!cancelled) setLinks((p) => ({ ...p, [n.userId]: lk }));
+          } catch (e) {
+            console.error(
+              `[pepl:reveal] mapLink ${uid}×${n.userId} failed: ${(e as Error).message}`,
+            );
+            if (!cancelled) setLinkErrors((p) => ({ ...p, [n.userId]: (e as Error).message }));
+          }
+        }),
+      );
+    }
+    void load();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [run.cardsReady, run.failed]);
+
+  if (error) {
+    return (
+      <div
+        role="alert"
+        className="mx-auto max-w-md rounded-2xl bg-red-50 px-6 py-5 text-center ring-1 ring-red-300"
+      >
+        <span className="rounded bg-red-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+          failed
+        </span>
+        <p className="mt-3 text-sm font-semibold text-charcoal">the reveal couldn&apos;t load</p>
+        <p className="mt-1 break-words font-mono text-[11px] text-red-700/80">{error}</p>
+      </div>
+    );
+  }
+
+  if (!dossier || !nodes) {
+    // honest loading — a breathing weave, never a spinner
     return (
       <div className="flex flex-col items-center gap-4 text-center">
         <div className="flex gap-1.5">
           {[0, 1, 2].map((i) => (
             <span
               key={i}
-              className="h-2.5 w-2.5 animate-bounce rounded-full bg-charcoal/40"
+              className="h-2.5 w-2.5 animate-pulse rounded-full bg-charcoal/40"
               style={{ animationDelay: `${i * 0.15}s` }}
             />
           ))}
         </div>
-        <p className="text-sm font-medium text-charcoal/60">
-          weaving the reflections of your story…
-        </p>
+        <p className="text-sm font-medium text-charcoal/60">weaving the reflections of your story…</p>
       </div>
     );
   }
@@ -134,11 +129,23 @@ export function RevealStep({ design }: { design: OnboardingDesign }) {
   return (
     <div className="animate-fade-in flex w-full flex-col items-center">
       <h1 className="text-2xl font-bold tracking-tight text-charcoal">the people in your reflection</h1>
-      <p className="mt-2 text-sm text-charcoal/60">
-        tap anyone to see their cards · the lines show what you share
+      <div className="mt-2 flex items-center gap-2 text-sm text-charcoal/60">
+        <ModeBadge mode={dossier.mode} />
+        <span>
+          {dossier.proof.peopleSurfaced} people surfaced · {dossier.proof.claimsCut} claims cut
+        </span>
+      </div>
+      <p className="mt-1 text-sm text-charcoal/55">
+        tap yourself for your dossier · tap anyone else for what you share
       </p>
       <div className="relative mt-4 h-[560px] w-full max-w-5xl">
-        <SocialGraph people={people} edges={EDGES} userId={USER_ID} />
+        <SocialGraph
+          userId={uid}
+          nodes={nodes}
+          links={links}
+          linkErrors={linkErrors}
+          dossier={dossier}
+        />
       </div>
     </div>
   );
