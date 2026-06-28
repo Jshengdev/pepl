@@ -3,8 +3,14 @@ import { createNodeWebSocket } from "@hono/node-ws";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import type { WSContext } from "hono/ws";
+import { z, ZodError } from "zod";
 import { assertHeldOutCritic } from "../llm/client";
-import { WsEvent } from "../types";
+import { ingestNode } from "../ingest/ingest";
+import { extractNode, graphNode, correctGraph } from "../ingest/graph";
+import { generateNode } from "../agents/generator";
+import { criticNode } from "../agents/critic";
+import { runPipeline, RunInput, Correction } from "../orchestrator/run";
+import { OnboardingAnswers, RelationshipGraph, Signal, WsEvent } from "../types";
 
 export const app = new Hono();
 const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
@@ -21,7 +27,86 @@ app.use("/*", async (c, next) => {
   console.log(`[pepl:backend] ${c.req.method} ${c.req.path} -> ${c.res.status} (${ms}ms)`);
 });
 
+// Honest error surfacing — a bad body is a 400, a dead stage is a 500. Never a faked 200.
+app.onError((err, c) => {
+  const status = err instanceof ZodError ? 400 : 500;
+  console.error(`[pepl:backend] ERROR ${c.req.method} ${c.req.path} -> ${status}: ${err.message}`);
+  return c.json({ error: err.message }, status);
+});
+
 app.get("/health", (c) => c.json({ ok: true, service: "pepl-backend" }));
+
+// POST /run — full pipeline; events stream to /ws via the default broadcast onEvent.
+app.post("/run", async (c) => {
+  const input = RunInput.parse(await c.req.json());
+  console.log(`[pepl:seam] POST /run source="${input.source}" kind=${input.kind}`);
+  return c.json(await runPipeline(input));
+});
+
+// POST /ingest — source -> { signals }.
+app.post("/ingest", async (c) => {
+  const { source } = z.object({ source: z.string() }).parse(await c.req.json());
+  console.log(`[pepl:seam] POST /ingest source="${source}"`);
+  return c.json(await ingestNode({ source }));
+});
+
+// GET /graph — ingest + extract + graph -> RelationshipGraph (?source defaults to the demo corpus).
+app.get("/graph", async (c) => {
+  const source = c.req.query("source") ?? "demo";
+  console.log(`[pepl:seam] GET /graph source="${source}"`);
+  const { signals } = await ingestNode({ source });
+  const { people, edges } = await extractNode({ signals });
+  return c.json(await graphNode({ people, edges }));
+});
+
+// POST /correct — apply a user correction, drop the matching seededWrong entry.
+app.post("/correct", async (c) => {
+  const { graph, correction } = z
+    .object({ graph: RelationshipGraph, correction: Correction })
+    .parse(await c.req.json());
+  console.log(`[pepl:seam] POST /correct ${correction.personId}.${correction.field}`);
+  return c.json(correctGraph(graph, correction));
+});
+
+// POST /generate — generate + critic; 422 (fail-CLOSED) if the judge can't ground it.
+app.post("/generate", async (c) => {
+  const body = z
+    .object({
+      graph: RelationshipGraph,
+      signals: z.array(Signal),
+      answers: OnboardingAnswers.optional(),
+      kind: z.enum(["bio", "story"]),
+    })
+    .parse(await c.req.json());
+  console.log(`[pepl:seam] POST /generate kind=${body.kind} signals=${body.signals.length}`);
+  const story = await generateNode(body);
+  const verdict = await criticNode({ output: story, signals: body.signals });
+  if (verdict.verdict === "regen") {
+    console.warn(`[pepl:seam] POST /generate -> 422 fail-CLOSED: ${verdict.failReason}`);
+    return c.json({ error: verdict.failReason, verdict }, 422);
+  }
+  return c.json({ story, verdict });
+});
+
+// POST /ask — route the question through generate(kind="story"); seed it as a Signal so it can ground.
+app.post("/ask", async (c) => {
+  const { question, source } = z
+    .object({ question: z.string(), source: z.string().optional() })
+    .parse(await c.req.json());
+  console.log(`[pepl:seam] POST /ask q="${question.slice(0, 60)}"`);
+  const { signals } = await ingestNode({ source: source ?? "demo" });
+  const seed: Signal = { id: `sig-ask-${Date.now()}`, text: question, source: "ask" };
+  const corpus = [...signals, seed];
+  const { people, edges } = await extractNode({ signals });
+  const graph = await graphNode({ people, edges });
+  const story = await generateNode({ graph, signals: corpus, kind: "story" });
+  const verdict = await criticNode({ output: story, signals: corpus });
+  if (verdict.verdict === "regen") {
+    console.warn(`[pepl:seam] POST /ask -> 422 fail-CLOSED: ${verdict.failReason}`);
+    return c.json({ error: verdict.failReason, verdict }, 422);
+  }
+  return c.json({ story, verdict });
+});
 
 app.get(
   "/ws",

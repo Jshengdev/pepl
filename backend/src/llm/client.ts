@@ -66,6 +66,10 @@ export interface CompleteOptions {
   prompt: string;
   /** Ask the gateway for a JSON object response. */
   json?: boolean;
+  /** 0 for deterministic grading/extraction; omit for the provider default. */
+  temperature?: number;
+  /** Cap output tokens when a stage has a known bound. */
+  maxTokens?: number;
 }
 
 /**
@@ -94,6 +98,8 @@ export async function complete(opts: CompleteOptions): Promise<string> {
         { role: "system", content: opts.system },
         { role: "user", content: opts.prompt },
       ],
+      ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
+      ...(opts.maxTokens !== undefined ? { max_tokens: opts.maxTokens } : {}),
       ...(opts.json ? { response_format: { type: "json_object" } } : {}),
     }),
   });
