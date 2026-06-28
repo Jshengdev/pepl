@@ -1,97 +1,161 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { SocialGraph } from "../SocialGraph";
-import { ModeBadge } from "../CardFaces";
-import { useRun } from "@/lib/pepl/useRun";
-import { reveal, getMap, mapLink } from "@/lib/pepl/api";
+import { MeshAvatar } from "../MeshAvatar";
+import { CardBack } from "../CardFaces";
+import { PEPL_SMILEY } from "../defaults";
+import type { AvatarDesign, CardDesign, Edge, OnboardingDesign, Person, ShapeKind } from "../types";
+import { getMap, mapLink } from "@/lib/pepl/api";
 import { getUserId } from "@/lib/pepl/session";
-import type { Dossier, MapLinkResp, MapNode } from "@/lib/pepl/types";
-import type { OnboardingDesign } from "../types";
+import type { MapNode } from "@/lib/pepl/types";
 
-// Step 4 — the reveal. Liveness rides the ONE WS hook (useRun); data is HTTP. When the run's
-// cards land (WS cards_ready) — or immediately on a mid-run refresh, since this view usually
-// mounts AFTER the scrape finished and the past event won't replay — we fetch the real
-// payload: POST /reveal → the bento Dossier, GET /api/map → the nodes, and mapLink(you, each
-// other) → the grounded edges. No placeholder people, no fabricated bio: the graph is 100%
-// backend data.
-//
-// FLAG (divergence): `design` (the avatar + cards the user drew in onboarding) no longer feeds
-// the reveal — node faces come from each MapNode.smiley and the user's stack is the Dossier.
-// The drawn smiley reaches the backend via POST /api/card (story 04), which is NOT wired in
-// this file; until then the user's MapNode.smiley is null → an honest-empty face.
-// FLAG: `userId` defaults to the session id (getUserId → "johnny"); the parent (OnboardingFlow,
-// outside this task's file scope) isn't wired to pass a real per-user id yet.
-export function RevealStep({
-  userId,
-}: {
-  userId?: string;
-  // accepted for call-site compat (OnboardingFlow still passes it); the reveal no longer reads
-  // it — see the FLAG above.
-  design?: OnboardingDesign;
-}) {
-  const uid = userId || getUserId(); // || not ?? — the parent seeds "" before mount
-  const run = useRun();
-  const [dossier, setDossier] = useState<Dossier | null>(null);
-  const [nodes, setNodes] = useState<MapNode[] | null>(null);
-  const [links, setLinks] = useState<Record<string, MapLinkResp>>({});
-  const [linkErrors, setLinkErrors] = useState<Record<string, string>>({});
+// Step 4 — the reveal, choreographed: assemble → stack → graph.
+// WIRED to the live backend: the people + edges are the REAL relationship graph
+// (GET /api/map + POST /api/map/link), not placeholders. The user's avatar + cards are the
+// ones THEY drew (design); other nodes get a seeded mesh (decorative only). Edge labels are
+// the connector's GROUNDED "what you share" (mapLink similarities), or omitted on no overlap.
+// Bios (age/hometown/…) aren't in the scrape, so they stay empty — never fabricated (§2).
+
+const RW = 180; // reveal card base width
+const RH = Math.round((RW * 600) / 470);
+
+type Phase = "assemble" | "stack" | "graph";
+
+function cardPhaseTransform(i: number, phase: Phase, entered: boolean): string {
+  if (phase === "assemble") {
+    const spread = entered ? 250 : 120;
+    const scale = entered ? 1.9 : 0.95;
+    return `translate(${(i - 1) * spread}px, 0px) scale(${scale})`;
+  }
+  return `translate(${(i - 1) * -4 + i * 12}px, ${74 + i * 9}px) scale(1.45)`;
+}
+
+function seededAvatar(colors: [string, string, string]): AvatarDesign {
+  return {
+    points: [
+      { angle: -Math.PI / 2, color: colors[0] },
+      { angle: Math.PI / 6, color: colors[1] },
+      { angle: (5 * Math.PI) / 6, color: colors[2] },
+    ],
+    strokes: PEPL_SMILEY.map((s) => s.map((p) => ({ ...p }))),
+  };
+}
+
+const SHAPES: ShapeKind[] = ["circle", "infinity", "rose"];
+const LIFT_SETS = [
+  [0.6, 1, 0.55, 1, 0.6],
+  [0.4, 0.7, 1, 0.7, 0.4],
+  [1, 0.6, 0.85, 0.6, 1],
+];
+function seededCards(baseOffset: number): CardDesign[] {
+  return [0, 1, 2].map((i) => ({
+    shape: SHAPES[i],
+    offset: (baseOffset + i * 4) % 12,
+    lifts: [...LIFT_SETS[i]],
+  }));
+}
+
+// Stable mesh palette per person id (so a node's seeded face doesn't flicker between renders).
+const PALETTES: [string, string, string][] = [
+  ["#ef9a4a", "#4f9a93", "#9a6fc0"],
+  ["#1f5fa6", "#ea6a52", "#c3c66a"],
+  ["#d65b97", "#4f93d6", "#7faa63"],
+  ["#e0a35a", "#6a8fd6", "#c06f9a"],
+  ["#5aa0e0", "#e07a4a", "#7ac06f"],
+];
+function paletteFor(id: string): [string, string, string] {
+  let h = 0;
+  for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return PALETTES[h % PALETTES.length];
+}
+
+// You at center; everyone else on a ring around you (positions in % of the canvas).
+function layout(idx: number, total: number, isUser: boolean): { x: number; y: number } {
+  if (isUser) return { x: 50, y: 55 };
+  const others = Math.max(1, total - 1);
+  const ang = -Math.PI / 2 + (2 * Math.PI * (idx - 1)) / others;
+  return { x: Math.round(50 + 33 * Math.cos(ang)), y: Math.round(50 + 30 * Math.sin(ang)) };
+}
+
+// Map a real backend MapNode → the reveal's Person model. Real name; your drawn avatar/cards
+// for you, a seeded mesh for others; bios empty (the scrape has no age/hometown — no fabrication).
+function toPerson(node: MapNode, idx: number, total: number, uid: string, design: OnboardingDesign): Person {
+  const isUser = node.userId === uid;
+  return {
+    id: node.userId,
+    rank: idx + 1,
+    name: node.name,
+    age: "",
+    hometown: "",
+    birthday: "",
+    occupation: "",
+    pos: layout(idx, total, isUser),
+    avatar: isUser ? design.avatar : seededAvatar(paletteFor(node.userId)),
+    cards: isUser ? design.cards : seededCards(idx),
+  };
+}
+
+export function RevealStep({ design }: { design: OnboardingDesign }) {
+  const uid = getUserId();
+  const [entered, setEntered] = useState(false);
+  const [phase, setPhase] = useState<Phase>("assemble");
+  const [people, setPeople] = useState<Person[] | null>(null);
+  const [edges, setEdges] = useState<Edge[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const loadedRef = useRef(false);
 
+  // The choreography (independent of the data fetch).
   useEffect(() => {
-    // A node failure on the wire = fail loud, never hide.
-    if (run.failed) {
-      setError(`${run.failed.node}: ${run.failed.error}`);
-      return;
-    }
-    if (loadedRef.current) return;
+    console.log("[pepl:reveal] cards → scale up → stack → graph");
+    const t0 = window.setTimeout(() => setEntered(true), 40);
+    const t2 = window.setTimeout(() => setPhase("stack"), 1500);
+    const t3 = window.setTimeout(() => setPhase("graph"), 2900);
+    return () => {
+      window.clearTimeout(t0);
+      window.clearTimeout(t2);
+      window.clearTimeout(t3);
+    };
+  }, []);
 
+  // WIRE: real relationship graph + grounded connector edges.
+  useEffect(() => {
     let cancelled = false;
-    async function load() {
-      console.log(`[pepl:reveal] load user=${uid} (cardsReady=${run.cardsReady})`);
-      let d: Dossier;
-      let m: { nodes: MapNode[] };
+    (async () => {
       try {
-        [d, m] = await Promise.all([reveal(uid), getMap()]);
-      } catch (e) {
-        // The reveal/map fetch failed — surface it (a red badge). If this was a too-early
-        // rehydrate attempt, cards_ready re-runs this effect and clears it on success.
-        if (!cancelled) setError((e as Error).message);
-        return;
-      }
-      if (cancelled) return;
-      loadedRef.current = true;
-      setError(null);
-      setDossier(d);
-      setNodes(m.nodes);
-      console.log(
-        `[pepl:reveal] dossier cards=${d.cards.length} mode=${d.mode} nodes=${m.nodes.length}`,
-      );
+        const m = await getMap();
+        if (cancelled) return;
+        // user first (the choreography treats people[0] as you).
+        const sorted = [...m.nodes].sort((a, b) =>
+          a.userId === uid ? -1 : b.userId === uid ? 1 : 0,
+        );
+        const ppl = sorted.map((n, i) => toPerson(n, i, sorted.length, uid, design));
+        setPeople(ppl);
+        console.log(`[pepl:reveal] map nodes=${sorted.length} mode=${m.mode}`);
 
-      // One mapLink per pair we draw: you ↔ each other node. A single edge failing is local
-      // (a red badge on that edge); it does not sink the whole reveal.
-      const peers = m.nodes.filter((n) => n.userId !== uid);
-      await Promise.all(
-        peers.map(async (n) => {
-          try {
-            const lk = await mapLink(uid, n.userId);
-            if (!cancelled) setLinks((p) => ({ ...p, [n.userId]: lk }));
-          } catch (e) {
-            console.error(
-              `[pepl:reveal] mapLink ${uid}×${n.userId} failed: ${(e as Error).message}`,
-            );
-            if (!cancelled) setLinkErrors((p) => ({ ...p, [n.userId]: (e as Error).message }));
-          }
-        }),
-      );
-    }
-    void load();
+        // one grounded edge per peer: you ↔ peer, labeled with the connector's top similarity.
+        const peers = sorted.filter((n) => n.userId !== uid);
+        const es: Edge[] = [];
+        await Promise.all(
+          peers.map(async (n) => {
+            try {
+              const lk = await mapLink(uid, n.userId);
+              const label = lk.link ? lk.similarities[0]?.theme ?? "connected" : null;
+              if (label && !cancelled) es.push({ from: uid, to: n.userId, label });
+            } catch (e) {
+              console.error(`[pepl:reveal] mapLink ${uid}×${n.userId}: ${(e as Error).message}`);
+            }
+          }),
+        );
+        if (!cancelled) setEdges(es);
+      } catch (e) {
+        if (!cancelled) setError((e as Error).message);
+      }
+    })();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [run.cardsReady, run.failed]);
+  }, [uid]);
 
   if (error) {
     return (
@@ -108,10 +172,10 @@ export function RevealStep({
     );
   }
 
-  if (!dossier || !nodes) {
+  if (!people || people.length === 0) {
     // honest loading — a breathing weave, never a spinner
     return (
-      <div className="flex flex-col items-center gap-4 text-center">
+      <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
         <div className="flex gap-1.5">
           {[0, 1, 2].map((i) => (
             <span
@@ -121,31 +185,71 @@ export function RevealStep({
             />
           ))}
         </div>
-        <p className="text-sm font-medium text-charcoal/60">weaving the reflections of your story…</p>
+        <p className="text-sm text-charcoal/60">bringing up the people in your reflection…</p>
       </div>
     );
   }
 
+  const user = people[0];
+  const isGraph = phase === "graph";
+
   return (
-    <div className="animate-fade-in flex w-full flex-col items-center">
-      <h1 className="text-2xl font-bold tracking-tight text-charcoal">the people in your reflection</h1>
-      <div className="mt-2 flex items-center gap-2 text-sm text-charcoal/60">
-        <ModeBadge mode={dossier.mode} />
-        <span>
-          {dossier.proof.peopleSurfaced} people surfaced · {dossier.proof.claimsCut} claims cut
-        </span>
+    <div className="flex h-full w-full flex-1 flex-col items-center">
+      <div
+        className="text-center transition-opacity duration-700"
+        style={{ opacity: isGraph ? 1 : 0 }}
+      >
+        <h1 className="text-2xl font-bold tracking-tight text-charcoal">
+          the people in your reflection
+        </h1>
+        <p className="mt-2 text-sm text-charcoal/60">
+          tap anyone to see their cards · the lines show what you share
+        </p>
       </div>
-      <p className="mt-1 text-sm text-charcoal/55">
-        tap yourself for your dossier · tap anyone else for what you share
-      </p>
+
       <div className="relative mt-4 h-[560px] w-full max-w-5xl">
-        <SocialGraph
-          userId={uid}
-          nodes={nodes}
-          links={links}
-          linkErrors={linkErrors}
-          dossier={dossier}
-        />
+        <div
+          className="absolute inset-0 transition-opacity duration-700"
+          style={{ opacity: isGraph ? 0 : 1, pointerEvents: isGraph ? "none" : "auto" }}
+        >
+          <div
+            className="absolute left-1/2 top-1/2"
+            style={{
+              transform: `translate(-50%, -50%) translateY(${phase === "assemble" ? -180 : -210}px) scale(${phase === "assemble" ? 0.7 : 1})`,
+              opacity: phase === "assemble" ? 0 : 1,
+              transition: "all 650ms cubic-bezier(0.22,1,0.36,1) 350ms",
+            }}
+          >
+            <MeshAvatar
+              points={user.avatar.points}
+              strokes={user.avatar.strokes}
+              strokeWidth={6}
+              className="h-24 w-24 shadow-[0_10px_28px_-10px_rgba(42,42,40,0.5)]"
+            />
+          </div>
+
+          {design.cards.map((card, i) => (
+            <div
+              key={i}
+              className="absolute left-1/2 top-1/2 transition-all duration-[850ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+              style={{
+                width: RW,
+                height: RH,
+                transform: `translate(-50%, -50%) ${cardPhaseTransform(i, phase, entered)}`,
+                zIndex: phase === "assemble" ? i : 30 - i * 10,
+              }}
+            >
+              <CardBack person={user} card={card} index={i} />
+            </div>
+          ))}
+        </div>
+
+        <div
+          className="absolute inset-0 transition-opacity duration-700"
+          style={{ opacity: isGraph ? 1 : 0, pointerEvents: isGraph ? "auto" : "none" }}
+        >
+          {isGraph && <SocialGraph people={people} edges={edges} userId={uid} />}
+        </div>
       </div>
     </div>
   );

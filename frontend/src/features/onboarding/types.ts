@@ -1,6 +1,5 @@
-// Shared shapes for the onboarding DESIGN flow (the avatar + card backings the user sculpts).
-// The reveal's people/edges/cards now come straight from the backend (MapNode / Similarity /
-// Dossier in lib/pepl/types) — these onboarding types only cover what the user draws.
+// Shared shapes for the onboarding flow. A backend will eventually populate the
+// people/cards; until then RevealStep seeds placeholder data.
 import type { GradStop } from "./palette";
 
 export type ShapeKind = "circle" | "infinity" | "rose";
@@ -29,5 +28,24 @@ export type OnboardingDesign = {
   avatar: AvatarDesign;
   cards: CardDesign[];
 };
+
+// A profile node in the reveal graph (placeholder until the backend lands).
+// Each person owns a stack of 3 card backings; flipping cycles through them.
+export type Person = {
+  id: string;
+  rank: number;
+  name: string;
+  age: string;
+  hometown: string;
+  birthday: string;
+  occupation: string;
+  pos: { x: number; y: number }; // node position on the graph, in %
+  // the user's own card carries their designed avatar; others get a seeded mesh
+  avatar: AvatarDesign;
+  cards: CardDesign[];
+};
+
+// An edge in the social graph — what two people share, shown on the line.
+export type Edge = { from: string; to: string; label: string };
 
 export type { GradStop };
