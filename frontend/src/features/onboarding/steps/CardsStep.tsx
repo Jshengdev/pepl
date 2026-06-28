@@ -3,17 +3,17 @@
 import { useEffect, useRef } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { createFluted, CARD_DEFAULTS, type FlutedController } from "../fluted";
-import { cardStops, sampleLooped } from "../palette";
+import { cardStopsFromColors, SET_LEN } from "../palette";
 import type { CardDesign, ShapeKind } from "../types";
 
-// Step 3 — "design your card backgrounds". Three fluted-gradient backings.
-//  · drag the vertical handles to sculpt each column's height
-//  · drag the dot around the shape (circle / infinity / rose) to rotate the
-//    palette window — the spectrum fades through one color at a time.
+// Step 3 — "design your card backgrounds". Three fluted backings, each gradient
+// derived from the colors chosen for the profile avatar. Drag the column handles
+// to sculpt heights; drag the dot around each shape to rotate the color set.
 
 const CARD_W = 236;
 const CARD_H = Math.round((CARD_W * 600) / 470); // keep the 470:600 card ratio
 const COLS = CARD_DEFAULTS.cols;
+const PALETTE_LEN = SET_LEN; // one full loop of the shape sweeps the whole set
 
 // ── shape math (viewBox 0..100, centered at 50) ─────────────────────────────
 function shapePoint(kind: ShapeKind, theta: number): { x: number; y: number } {
@@ -42,15 +42,15 @@ function shapePath(kind: ShapeKind): string {
   return d + "Z";
 }
 
-const PALETTE_LEN = 12; // one full loop of the shape sweeps the whole wheel
-
 // ── one card: canvas + column-height handles ────────────────────────────────
 function FlutedCard({
   design,
+  colors,
   index,
   onLifts,
 }: {
   design: CardDesign;
+  colors: string[];
   index: number;
   onLifts: (lifts: number[]) => void;
 }) {
@@ -64,7 +64,7 @@ function FlutedCard({
     ctrlRef.current = createFluted(hostRef.current, {
       ...CARD_DEFAULTS,
       lifts: design.lifts.slice(),
-      stops: cardStops(design.offset),
+      stops: cardStopsFromColors(colors, design.offset),
     });
     console.log(`[pepl:cards] card ${index} mounted`);
     return () => ctrlRef.current?.destroy();
@@ -75,8 +75,8 @@ function FlutedCard({
     ctrlRef.current?.setLifts(design.lifts);
   }, [design.lifts]);
   useEffect(() => {
-    ctrlRef.current?.setStops(cardStops(design.offset));
-  }, [design.offset]);
+    ctrlRef.current?.setStops(cardStopsFromColors(colors, design.offset));
+  }, [design.offset, colors]);
 
   function liftFromEvent(e: React.PointerEvent): number {
     const rect = cardRef.current!.getBoundingClientRect();
@@ -104,12 +104,11 @@ function FlutedCard({
   return (
     <div
       ref={cardRef}
-      className="relative shrink-0 overflow-hidden rounded-[28px] shadow-[0_18px_50px_-18px_rgba(42,42,40,0.4)] ring-1 ring-black/[0.04]"
+      className="relative shrink-0 overflow-hidden rounded-[28px]"
       style={{ width: CARD_W, height: CARD_H }}
     >
       <div ref={hostRef} className="absolute inset-0" />
 
-      {/* mono signature, echoing the reference card */}
       <p className="absolute inset-x-0 top-3 text-center font-mono text-[8px] uppercase leading-tight tracking-[0.18em] text-charcoal/55">
         designed in pepl
         <br />
@@ -141,18 +140,19 @@ function FlutedCard({
   );
 }
 
-// ── one shape control (drag the dot to rotate the palette) ──────────────────
+// ── one shape control (drag the white dot to rotate the colors) ─────────────
 function ShapeControl({
   design,
+  gid,
   onOffset,
 }: {
   design: CardDesign;
+  gid: number;
   onOffset: (offset: number) => void;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const theta = (design.offset / PALETTE_LEN) * Math.PI * 2;
   const dot = shapePoint(design.shape, theta);
-  const dotColor = sampleLooped(design.offset);
 
   function setFromEvent(e: React.PointerEvent) {
     const rect = svgRef.current!.getBoundingClientRect();
@@ -167,7 +167,7 @@ function ShapeControl({
     <svg
       ref={svgRef}
       viewBox="0 0 100 100"
-      className="h-28 w-28 cursor-grab touch-none select-none active:cursor-grabbing"
+      className="h-[134px] w-[134px] cursor-grab touch-none select-none active:cursor-grabbing"
       onPointerDown={(e) => {
         e.currentTarget.setPointerCapture(e.pointerId);
         setFromEvent(e);
@@ -176,6 +176,21 @@ function ShapeControl({
         if (e.currentTarget.hasPointerCapture(e.pointerId)) setFromEvent(e);
       }}
     >
+      <defs>
+        {/* grain/tooth clipped to the shape, matching the cards' texture */}
+        <filter id={`shapeGrain-${gid}`} x="-20%" y="-20%" width="140%" height="140%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch" result="n" />
+          <feColorMatrix in="n" type="saturate" values="0" result="m" />
+          <feComponentTransfer in="m" result="g">
+            <feFuncA type="linear" slope="0.5" />
+          </feComponentTransfer>
+          <feComposite in="g" in2="SourceAlpha" operator="in" result="grain" />
+          <feMerge>
+            <feMergeNode in="SourceGraphic" />
+            <feMergeNode in="grain" />
+          </feMerge>
+        </filter>
+      </defs>
       <path
         d={shapePath(design.shape)}
         fill="none"
@@ -183,19 +198,22 @@ function ShapeControl({
         strokeWidth={11}
         strokeLinejoin="round"
         strokeLinecap="round"
+        filter={`url(#shapeGrain-${gid})`}
       />
-      <circle cx={dot.x} cy={dot.y} r={7.5} fill={dotColor} stroke="white" strokeWidth={2.5} />
+      <circle cx={dot.x} cy={dot.y} r={7} fill="#ffffff" stroke="rgba(42,42,40,0.45)" strokeWidth={2} />
     </svg>
   );
 }
 
 export function CardsStep({
   value,
+  colors,
   onChange,
   onNext,
   onBack,
 }: {
   value: CardDesign[];
+  colors: string[];
   onChange: (cards: CardDesign[]) => void;
   onNext: () => void;
   onBack: () => void;
@@ -207,27 +225,29 @@ export function CardsStep({
   return (
     <div className="flex w-full flex-col items-center">
       <h1 className="text-2xl font-bold tracking-tight text-charcoal">design your card backgrounds</h1>
-      <p className="mt-2 text-sm text-charcoal/45">
+      <p className="mt-2 text-sm text-charcoal/60">
         drag the handles to sculpt the columns · drag the dot around each shape to shift the colors
       </p>
 
-      <div className="mt-9 flex items-start gap-5">
+      <div className="mt-10 flex items-start gap-5">
         <button
           type="button"
           onClick={onBack}
           aria-label="back"
-          className="mt-28 flex h-10 w-10 items-center justify-center rounded-full text-charcoal/40 transition hover:bg-charcoal/5 hover:text-charcoal"
+          className="mt-28 flex h-10 w-10 items-center justify-center rounded-full text-charcoal/45 transition hover:bg-charcoal/5 hover:text-charcoal"
         >
           <ArrowLeft className="h-6 w-6" />
         </button>
 
         {value.map((card, i) => (
-          <div
-            key={i}
-            className={`flex flex-col items-center gap-5 ${i === 1 ? "-mt-3" : ""}`}
-          >
-            <FlutedCard design={card} index={i} onLifts={(lifts) => update(i, { lifts })} />
-            <ShapeControl design={card} onOffset={(offset) => update(i, { offset })} />
+          <div key={i} className={`flex flex-col items-center gap-4 ${i === 1 ? "-mt-3" : ""}`}>
+            <FlutedCard
+              design={card}
+              colors={colors}
+              index={i}
+              onLifts={(lifts) => update(i, { lifts })}
+            />
+            <ShapeControl design={card} gid={i} onOffset={(offset) => update(i, { offset })} />
           </div>
         ))}
 

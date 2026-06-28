@@ -51,7 +51,7 @@ export function LandingPage() {
             (blue / yellow / pink pastels) with the white scribble "eyes" on top. */}
         <span
           aria-hidden="true"
-          className="relative inline-flex h-6 w-6 overflow-hidden rounded-full"
+          className="relative inline-flex h-6 w-6 overflow-hidden rounded-full transition-transform duration-300 ease-out hover:-rotate-[10deg] hover:scale-110"
           style={{
             backgroundColor: "#c7a6d2",
             backgroundImage: [
