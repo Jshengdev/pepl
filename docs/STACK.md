@@ -6,6 +6,7 @@ The decisions the build hits at **S2 (real wiring)**. Recommendations — the bu
 
 - **Backend:** Hono (already up).
 - **Infra + models → InsForge** (agent-native cloud). One integration gives Postgres **db** + **auth** + an **AI model gateway** + **hosting** — and targets *Best Use of InsForge ($500)*. It ships a **Claude Code skills plugin**: the build can install it and follow the canonical setup at `insforge.dev/skill.md` (docs: `docs.insforge.dev`).
+- **Auth (sign-in) + personal data → Composio.** One Google OAuth connection = the **sign-in** AND the **Gmail / Contacts / Calendar** data source (pepl's real `Signal[]`). **Composio is NOT a database** — derived data still lives in the InsForge store. So: **InsForge = db + gateway + deploy; Composio = auth + ingest.** (InsForge's own auth goes unused.)
 - **External grounding → You.com** (key set + validated — see wiring below). Citation-backed search to enrich a person/company in the graph or ground a claim with a real web source. Targets *Best Use of You.com ($1k)*. It literally strengthens "every claim is grounded."
 - **Store:** InsForge Postgres; for the demo an in-memory map is fine first (engineered half-half), swap to Postgres when persistence matters.
 - **Keep models behind one `llm/client.ts`** so the provider is swappable in one file.
@@ -23,6 +24,7 @@ The generator and the critic MUST be **different model families**, or the critic
 - **InsForge (all set + validated):** `INSFORGE_URL` (oss_host) · `INSFORGE_ANON_KEY` (anon_, public-safe — client/Google-SSO) · `INSFORGE_API_KEY` (ik_, admin/service for the SDK, **server-only**) · `INSFORGE_OPENROUTER_API_KEY` (sk-or, the model gateway). Frontend has `NEXT_PUBLIC_INSFORGE_URL` / `NEXT_PUBLIC_INSFORGE_ANON_KEY`.
 - `YDC_API_KEY` — You.com Research/Search. **Set in `backend/.env` + validated live (200, returns cited sources).**
 - `OPENROUTER_API_KEY` / `CEREBRAS_API_KEY` / `XAI_API_KEY` — already in `backend/.env` (build is on the OpenRouter fallback until the InsForge gateway is wired; XAI = Grok for voice).
+- `COMPOSIO_API_KEY` — Composio (Google sign-in + Gmail/Contacts/Calendar data). **Needs your key** — drop it and I'll wire + validate (like You.com). Header `X-API-Key`.
 
 ## InsForge — wiring (db + auth + model gateway + deploy)
 
@@ -33,6 +35,8 @@ One platform = the **$500 prize** + most of pepl's infra. Install its Claude Cod
 **Model gateway = OpenRouter.** InsForge provisions a project-scoped OpenRouter key (usage bills to InsForge credits → the prize), so there's **no separate gateway URL**: call `https://openrouter.ai/api/v1/chat/completions` with `Authorization: Bearer $INSFORGE_OPENROUTER_API_KEY` (validated, HTTP 200). Slugs are OpenRouter's: generator `anthropic/claude-3-5-sonnet`, critic a non-Anthropic slug e.g. `qwen/qwen-2.5-72b-instruct` (**held-out**). **To route the build's LLM through InsForge with ZERO code change:** set `OPENROUTER_API_KEY` to the `INSFORGE_OPENROUTER_API_KEY` value, keep `LLM_PROVIDER=openrouter`. (The empty-baseUrl `insforge` branch in `llm/client.ts` is then unneeded; if kept, set its baseUrl to `https://openrouter.ai/api/v1` and keyEnv to `INSFORGE_OPENROUTER_API_KEY`.)
 
 **Auth — Google SSO (the landing CTA):**
+
+> pepl uses **Composio** for Google sign-in (see the Composio section) — one connection = sign-in + Gmail data. The InsForge auth below is **unused**, kept only as a reference alternative.
 ```ts
 import { createClient } from '@insforge/sdk'
 const insforge = createClient({ baseUrl: NEXT_PUBLIC_INSFORGE_URL, anonKey: NEXT_PUBLIC_INSFORGE_ANON_KEY })
@@ -44,6 +48,25 @@ Enable the Google provider + add the redirect URL via dashboard/CLI (`config app
 **Database (if we persist past in-memory):** `insforge.database.from('people').insert([{…}])` / `.select()` / `.update()` / `.delete()` (inserts must be arrays); server admin via `createAdminClient({ baseUrl, apiKey })`. pgvector is available for semantic recall.
 
 **Deploy (S4):** `npx @insforge/cli deploy` (sites/compute); `vercel.json` if the Next.js app deploys as an SPA elsewhere. Always local-build before deploy.
+
+## Composio — sign-in + data source (NOT a database)
+
+Composio = managed OAuth + tool execution. In pepl, one Google connection does two jobs:
+1. **Sign-in (SSO):** the Composio Google OAuth connection *is* the user's identity → it powers the landing "Sign in with Google." **This replaces InsForge auth.**
+2. **Data source (ingest):** the same connection pulls **Gmail / Contacts / Calendar** → pepl's `Signal[]` (the real data the Double + relationship graph are built from).
+
+**It does NOT store pepl's data.** People / edges / signals / cards / the user record live in the **store** — InsForge Postgres (or in-memory for the demo). Composio = *source*, InsForge = *store*.
+
+**Flow:**
+1. Landing "Sign in with Google" → start a Composio Google connection bound to a session/user_id (initiate → Google redirect → callback). For the demo, connect *your own* Google once via the **terminal** (`composio` CLI) → a real connected account.
+2. Pull for that user_id: `execute("GMAIL_FETCH_EMAILS", { query, max_results })` (+ contacts/calendar) → raw → extract → `Signal[]` → graph + Double. **Precache this pull for the demo** (engineered half-half — pipeline stays real).
+3. Store derived people/graph/cards in InsForge (or in-memory). Generate + held-out critic via the InsForge gateway; You.com for external facts.
+
+**Setup:**
+- SDK `@composio/core`. Direct API: `POST https://backend.composio.dev/api/v3/tools/execute/<TOOL>`, header `X-API-Key: $COMPOSIO_API_KEY`.
+- Add `COMPOSIO_API_KEY` to `backend/.env`. In the Composio dashboard, set up the **Gmail auth-config** (Google `client_id`/`client_secret`, or Composio-managed Google auth) + enable Contacts/Calendar toolkits.
+- Terminal sign-in: `composio login`, then connect Google (`composio add gmail` / dashboard) → connected account for the demo subject.
+- **Reference pattern:** `doubles` has a working Composio Gmail/Calendar setup (`src/composio/gmail.ts`, `src/composio/calendar.ts`, the `/connect/:provider/initiate` OAuth flow, `@composio/core`) — use it as a concept reference (write fresh; no migration comments).
 
 ## You.com (grounding/enrichment) — wiring
 
