@@ -100,10 +100,16 @@ export const graphNode = defineNode({
         : { ...p, ring: Math.max(1, ringFor(p.closeness)) as 1 | 2 | 3 },
     );
 
-    // Sanity: the graph must have rediscovered the real shape from the signals — assert, don't patch.
-    const has = (n: string) => placed.some((p) => p.name.toLowerCase().includes(n));
-    if (!has("sarah") || !has("teri"))
-      throw new Error(`[pepl:node:graph] expected Sarah and Teri in the graph (got: ${placed.map((p) => p.name).join(", ")})`);
+    // Sanity (generic — NO hardcoded names): a real graph has the owner at ring 0
+    // plus at least one inner-ring (1–2) correspondent backed by an edge. Assert the
+    // shape the pull rediscovered, don't patch it.
+    const innerReal = placed.some(
+      (p) => p.ring >= 1 && p.ring <= 2 && edges.some((e) => e.from === p.id || e.to === p.id),
+    );
+    if (!innerReal)
+      throw new Error(
+        `[pepl:node:graph] no ring 1–2 correspondent backed by an edge — graph too thin to be real (people=${placed.length})`,
+      );
 
     // Correction beat, grounded in sig-rage-bait-correction ("Teri's here, Johnny's here — that's so wrong"):
     // seed ONE wrong ring on the thinnest-but-real person (closest to the edge of the graph, still
@@ -123,6 +129,36 @@ export const graphNode = defineNode({
     return { people: placed, edges, seededWrong };
   },
 });
+
+/**
+ * Merge the RADIAL graph (Gmail/Calendar interaction metadata — quantitative ties
+ * to the owner) with the LATERAL graph (extract's LLM-inferred person↔person edges).
+ * People dedupe by id, radial wins (closeness is measured, not guessed). Edges union,
+ * deduped by from|to. Feed the result to graphNode for ring placement.
+ */
+export function mergeGraphInputs(
+  radial: { people: Person[]; edges: Edge[] },
+  lateral: { people: Person[]; edges: Edge[] },
+): { people: Person[]; edges: Edge[] } {
+  const byId = new Map<string, Person>();
+  for (const p of lateral.people) byId.set(p.id, p);
+  for (const p of radial.people) byId.set(p.id, p); // measured radial closeness wins
+  const people = [...byId.values()];
+
+  const seen = new Set<string>();
+  const edges: Edge[] = [];
+  for (const e of [...radial.edges, ...lateral.edges]) {
+    const key = `${e.from}|${e.to}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    edges.push(e);
+  }
+
+  console.log(
+    `[pepl:node:graph] merge radial(people=${radial.people.length},edges=${radial.edges.length}) + lateral(people=${lateral.people.length},edges=${lateral.edges.length}) -> people=${people.length} edges=${edges.length}`,
+  );
+  return { people, edges };
+}
 
 /** Apply a user correction and drop the matching seededWrong entry. */
 export function correctGraph(

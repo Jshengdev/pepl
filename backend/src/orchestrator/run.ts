@@ -6,7 +6,7 @@
 // (fail LOUD, never a canned value). If grounding still fails after 2 retries we refuse to ship.
 import { z } from "zod";
 import { ingestNode } from "../ingest/ingest";
-import { extractNode, graphNode, correctGraph } from "../ingest/graph";
+import { extractNode, graphNode, correctGraph, mergeGraphInputs } from "../ingest/graph";
 import { generateNode } from "../agents/generator";
 import { criticNode } from "../agents/critic";
 import { cardsNode } from "../agents/cards";
@@ -99,14 +99,15 @@ export async function runPipeline(
     }
   }
 
-  const { signals } = await step("ingest", async () => {
+  const { signals, people: radialPeople, edges: radialEdges } = await step("ingest", async () => {
     onEvent({ type: "scrape_progress", pct: 33, etaSec: 2 });
     onEvent({ type: "scrape_progress", pct: 80, etaSec: 1 });
-    return ingestNode({ source: input.source });
+    return ingestNode({ source: input.source, answers: input.answers });
   });
 
-  const { people, edges } = await step("extract", () => extractNode({ signals }));
-  let graph = await step("graph", () => graphNode({ people, edges }));
+  const lateral = await step("extract", () => extractNode({ signals }));
+  const merged = mergeGraphInputs({ people: radialPeople, edges: radialEdges }, lateral);
+  let graph = await step("graph", () => graphNode(merged));
 
   if (input.correction) {
     graph = correctGraph(graph, input.correction);

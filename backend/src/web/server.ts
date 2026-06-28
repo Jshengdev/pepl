@@ -6,7 +6,8 @@ import type { WSContext } from "hono/ws";
 import { z, ZodError } from "zod";
 import { assertHeldOutCritic } from "../llm/client";
 import { ingestNode } from "../ingest/ingest";
-import { extractNode, graphNode, correctGraph } from "../ingest/graph";
+import { extractNode, graphNode, correctGraph, mergeGraphInputs } from "../ingest/graph";
+import { initiateGoogleConnect, getConnectionStatus } from "../ingest/composio/connect";
 import { generateNode } from "../agents/generator";
 import { criticNode } from "../agents/critic";
 import { runPipeline, RunInput, Correction } from "../orchestrator/run";
@@ -54,9 +55,10 @@ app.post("/ingest", async (c) => {
 app.get("/graph", async (c) => {
   const source = c.req.query("source") ?? "demo";
   console.log(`[pepl:seam] GET /graph source="${source}"`);
-  const { signals } = await ingestNode({ source });
-  const { people, edges } = await extractNode({ signals });
-  return c.json(await graphNode({ people, edges }));
+  const { signals, people: radialPeople, edges: radialEdges } = await ingestNode({ source });
+  const lateral = await extractNode({ signals });
+  const merged = mergeGraphInputs({ people: radialPeople, edges: radialEdges }, lateral);
+  return c.json(await graphNode(merged));
 });
 
 // POST /correct — apply a user correction, drop the matching seededWrong entry.
@@ -66,6 +68,24 @@ app.post("/correct", async (c) => {
     .parse(await c.req.json());
   console.log(`[pepl:seam] POST /correct ${correction.personId}.${correction.field}`);
   return c.json(correctGraph(graph, correction));
+});
+
+// POST /api/connect/google/initiate — start the managed Google OAuth flow for a user.
+app.post("/api/connect/google/initiate", async (c) => {
+  const { userId, provider } = z
+    .object({ userId: z.string(), provider: z.enum(["gmail", "calendar"]) })
+    .parse(await c.req.json());
+  console.log(`[pepl:seam] POST /api/connect/google/initiate userId=${userId} provider=${provider}`);
+  return c.json(await initiateGoogleConnect(userId, provider));
+});
+
+// GET /api/connect/google/status — poll whether a user's Google connection is ACTIVE.
+app.get("/api/connect/google/status", async (c) => {
+  const { userId, provider } = z
+    .object({ userId: z.string(), provider: z.enum(["gmail", "calendar"]) })
+    .parse({ userId: c.req.query("userId"), provider: c.req.query("provider") });
+  console.log(`[pepl:seam] GET /api/connect/google/status userId=${userId} provider=${provider}`);
+  return c.json(await getConnectionStatus(userId, provider));
 });
 
 // POST /generate — generate + critic; 422 (fail-CLOSED) if the judge can't ground it.
