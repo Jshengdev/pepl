@@ -1,26 +1,153 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ── Design tokens (per tinkle-landing-design.md) ──────────────────────────
+   Named colors become utilities automatically in Tailwind v4:
+   bg-cream, text-charcoal, bg-ocean, text-sky, bg-sunset-pink, etc.        */
+@theme {
+  /* Page canvas — super-light neutral gray, almost white. The Monet color
+     comes from the wash overlay, not the base. */
+  --color-cream: #f4f4f5;
+  --color-cloud: #fafaf7;
+  --color-charcoal: #2a2a28;
+
+  --color-sky: #7fb2e5;
+  --color-ocean: #37618f;
+
+  --color-sunset-pink: #e8a8b8;
+  --color-sunset-orange: #e89a5c;
+
+  --color-grass: #86be4b;
+
+  /* Monet "Water Lily Pond" palette — sage, teal, periwinkle, lily rose.
+     Used for the painterly washes that bleed over the globe. */
+  --color-lily-green: #7c9a6b;
+  --color-lily-teal: #5e8a8c;
+  --color-lily-blue: #6d86ad;
+  --color-lily-rose: #d8a0b0;
+
+  --font-sans: var(--font-jakarta);
+  --font-britti: "Britti Sans", var(--font-jakarta), ui-sans-serif, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Brand wordmark face. Britti Sans is a commercial font (Nois) — self-host it:
+   drop britti-sans.woff2 into /public/fonts/ and it activates automatically.
+   Until then this @font-face fails silently and the wordmark falls back to
+   Plus Jakarta Sans. */
+@font-face {
+  font-family: "Britti Sans";
+  src: url("/fonts/britti-sans.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-cream);
+  color: var(--color-charcoal);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ── Film grain / noise overlay — painterly tooth, sits above everything ──── */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0.09;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+}
+
+/* ── Painterly canvas texture over the whole page ─────────────────────────
+   Per the Monet-filter reference's lightweight CSS/SVG route: feTurbulence →
+   feDiffuseLighting renders a lit canvas/impasto weave, composited with
+   soft-light so the whole site — text included — gains a paper tooth. */
+.paper-texture {
+  position: fixed;
+  inset: 0;
+  z-index: 49;
+  pointer-events: none;
+  opacity: 0.5;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.34' numOctaves='2' stitchTiles='stitch' result='n'/%3E%3CfeDiffuseLighting in='n' surfaceScale='1.4' diffuseConstant='1.05'%3E%3CfeDistantLight azimuth='235' elevation='56'/%3E%3C/feDiffuseLighting%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E");
+  background-size: 110px 110px;
+}
+
+/* Hand-painted edge on the big text — feDisplacementMap over fine turbulence
+   roughens the letterforms just slightly (filter defined in layout.tsx). */
+.paint-text {
+  filter: url(#paintTexture);
+}
+
+/* ── Painterly globe treatment ─────────────────────────────────────────────
+   soft  = light blur + recolor; a tight radial mask crops the rim cleanly so
+           no color bleeds past the sphere (only the bg shows around it);
+   grain = colored noise / tooth, like Figma's multicolor-noise texture.     */
+.globe-soft {
+  /* hue-rotate + saturate pull the blue oceans toward Monet teal/green.
+     Blur melts the coastlines into soft blobs (minor detail gone); the colored
+     grain on top re-introduces a painted tooth. Kept moderate so the dropped
+     pins + pearl lines (same canvas) still read through it. */
+  filter: saturate(1.32) contrast(0.84) brightness(1.18) blur(1.2px)
+    hue-rotate(-22deg);
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 31%, transparent 35%);
+  mask-image: radial-gradient(circle at 50% 50%, #000 31%, transparent 35%);
+}
+
+/* Colored grain + painterly tooth over the planet (Figma multicolor-noise
+   vibe). feTurbulence with no desaturation → RGB speckle; overlay blends it
+   into the texture. Masked to the same disc as the globe. */
+.globe-grain {
+  mix-blend-mode: overlay;
+  opacity: 0.82;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='130' height='130'%3E%3Cfilter id='cn'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23cn)'/%3E%3C/svg%3E");
+  background-size: 130px 130px;
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 31%, transparent 35%);
+  mask-image: radial-gradient(circle at 50% 50%, #000 31%, transparent 35%);
+}
+
+/* ── Gentle entrance animations ────────────────────────────────────────── */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-up {
+  opacity: 0;
+  animation: fade-up 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-fade-in {
+  opacity: 0;
+  animation: fade-in 1.8s ease forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-fade-in {
+    animation: none;
+    opacity: 1;
+  }
 }
