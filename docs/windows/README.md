@@ -38,6 +38,9 @@ Windows **1 & 2 lock the specs** (run first + continuously); **Window 3 executes
 | dot | `/Users/johnnysheng/code/dot` | loop framework + stage gates → Window 3 |
 | sayhello | `/Users/johnnysheng/code/sayhello` | held-out judge + node pipeline → Window 3 |
 | hackathon | `/Users/johnnysheng/code/hackathon` | theme, DEMO-SCRIPT, DEVPOST, tmux-spawn pattern → Window 2 |
+| SOTARE | `/Users/johnnysheng/code/SOTARE` | Johnny's research lab — grounding discipline, cognition store, AI-as-unconscious → distilled in [../reference/SOTARE-RESEARCH.md](../reference/SOTARE-RESEARCH.md) |
+
+**Distilled references:** [../reference/DOUBLES-FLOW.md](../reference/DOUBLES-FLOW.md) (what a Double is + port mapping) · [../reference/SOTARE-RESEARCH.md](../reference/SOTARE-RESEARCH.md) (research to apply).
 
 **Hard constraints (all windows):**
 - No "ported from doubles" / migration comments — code reads as clean original pepl.
