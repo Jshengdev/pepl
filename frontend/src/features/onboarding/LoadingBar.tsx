@@ -28,14 +28,14 @@ export function LoadingBar({ progress, label }: { progress: number; label: strin
             <span
               key={i}
               className="h-2 w-2 rounded-[2px] transition-colors duration-300"
-              style={{ backgroundColor: i < filled ? "#2f6bf5" : "rgba(42,42,40,0.12)" }}
+              style={{ backgroundColor: i < filled ? "#52524f" : "rgba(42,42,40,0.08)" }}
             />
           ))}
         </div>
       </div>
       <div className="mt-2.5 flex items-center justify-center gap-1.5">
         <span className="text-[10px] font-medium tracking-[0.06em] text-charcoal/55">{label}</span>
-        <span className="flex items-end gap-[3px] pb-px">
+        <span className="flex items-end gap-[2px] pb-px">
           {[0, 1, 2].map((i) => (
             <span
               key={i}

@@ -30,9 +30,9 @@ export function LandingPage() {
         <FlutedBackground lifted={ctaHover} />
       </div>
 
-      {/* A large globe rising from the bottom — its top half is on-screen
-          (~1.5× size; globe center sits at the bottom edge of the viewport). */}
-      <div className="animate-fade-in absolute left-1/2 top-[54vh] z-0 aspect-square w-[min(93vh,129vw)] -translate-x-1/2">
+      {/* A large globe rising from the bottom — its top two-thirds are on-screen
+          (~2× size). */}
+      <div className="animate-fade-in absolute left-1/2 top-[25vh] z-0 aspect-square w-[min(124vh,172vw)] -translate-x-1/2">
         <HeroGlobe />
       </div>
 
@@ -100,6 +100,8 @@ export function LandingPage() {
           href="/signin"
           onMouseEnter={() => setCtaHover(true)}
           onMouseLeave={() => setCtaHover(false)}
+          onFocus={() => setCtaHover(true)}
+          onBlur={() => setCtaHover(false)}
           className="animate-fade-up group pointer-events-auto mb-[8vh] mt-auto inline-flex items-center gap-2.5 rounded-xl bg-white py-3 pl-4 pr-6 text-charcoal ring-1 ring-charcoal/[0.07] shadow-[0_2px_5px_-1px_rgba(42,42,40,0.18),inset_0_1px_0_rgba(255,255,255,0.95)] transition-transform active:scale-[0.96]"
           style={{ animationDelay: "0.3s" }}
         >

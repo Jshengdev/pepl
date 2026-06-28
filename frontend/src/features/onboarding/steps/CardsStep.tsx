@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { createFluted, CARD_DEFAULTS, type FlutedController } from "../fluted";
 import { cardStopsFromColors, SET_LEN } from "../palette";
@@ -47,11 +47,13 @@ function FlutedCard({
   design,
   colors,
   index,
+  dim,
   onLifts,
 }: {
   design: CardDesign;
   colors: string[];
   index: number;
+  dim: boolean;
   onLifts: (lifts: number[]) => void;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -115,27 +117,33 @@ function FlutedCard({
         backing no.{index + 1}
       </p>
 
-      {/* column-height handles — drag a tick up/down to set that column */}
-      {Array.from({ length: COLS }).map((_, i) => {
-        const heightFrac = CARD_DEFAULTS.base + design.lifts[i] * CARD_DEFAULTS.intensity;
-        const left = `${((i + 0.5) / COLS) * 100}%`;
-        return (
-          <div
-            key={i}
-            onPointerDown={(e) => onColDown(i, e)}
-            onPointerMove={onColMove}
-            onPointerUp={onColUp}
-            className="group absolute inset-y-0 w-8 -translate-x-1/2 cursor-ns-resize touch-none"
-            style={{ left }}
-          >
-            <div className="absolute bottom-[4%] left-1/2 top-[8%] w-px -translate-x-1/2 bg-charcoal/15" />
+      {/* column-height handles — drag a tick up/down to set that column.
+          fades out as the cards step exits into the reveal. */}
+      <div
+        className="absolute inset-0 transition-opacity duration-500"
+        style={{ opacity: dim ? 0 : 1, pointerEvents: dim ? "none" : "auto" }}
+      >
+        {Array.from({ length: COLS }).map((_, i) => {
+          const heightFrac = CARD_DEFAULTS.base + design.lifts[i] * CARD_DEFAULTS.intensity;
+          const left = `${((i + 0.5) / COLS) * 100}%`;
+          return (
             <div
-              className="absolute left-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-charcoal/75 shadow transition-transform group-hover:scale-125"
-              style={{ top: `${(1 - heightFrac) * 100}%` }}
-            />
-          </div>
-        );
-      })}
+              key={i}
+              onPointerDown={(e) => onColDown(i, e)}
+              onPointerMove={onColMove}
+              onPointerUp={onColUp}
+              className="group absolute inset-y-0 w-8 -translate-x-1/2 cursor-ns-resize touch-none"
+              style={{ left }}
+            >
+              <div className="absolute bottom-[4%] left-1/2 top-[8%] w-px -translate-x-1/2 bg-charcoal/15" />
+              <div
+                className="absolute left-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-charcoal/75 shadow transition-transform group-hover:scale-125"
+                style={{ top: `${(1 - heightFrac) * 100}%` }}
+              />
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -218,23 +226,41 @@ export function CardsStep({
   onNext: () => void;
   onBack: () => void;
 }) {
+  const [leaving, setLeaving] = useState(false);
   function update(i: number, patch: Partial<CardDesign>) {
     onChange(value.map((c, idx) => (idx === i ? { ...c, ...patch } : c)));
+  }
+  function next() {
+    // exit: the lines + shapes disappear and the backings grow, then reveal
+    setLeaving(true);
+    window.setTimeout(onNext, 620);
   }
 
   return (
     <div className="flex w-full flex-col items-center">
-      <h1 className="text-2xl font-bold tracking-tight text-charcoal">design your card backgrounds</h1>
-      <p className="mt-2 text-sm text-charcoal/60">
+      <h1
+        className="text-2xl font-bold tracking-tight text-charcoal transition-opacity duration-500"
+        style={{ opacity: leaving ? 0 : 1 }}
+      >
+        design your card backgrounds
+      </h1>
+      <p
+        className="mt-2 text-sm text-charcoal/60 transition-opacity duration-500"
+        style={{ opacity: leaving ? 0 : 1 }}
+      >
         drag the handles to sculpt the columns · drag the dot around each shape to shift the colors
       </p>
 
-      <div className="mt-10 flex items-start gap-5">
+      <div
+        className="mt-10 flex items-start gap-5 transition-transform duration-[620ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+        style={{ transform: leaving ? "scale(1.16)" : "scale(1)" }}
+      >
         <button
           type="button"
           onClick={onBack}
           aria-label="back"
           className="mt-28 flex h-10 w-10 items-center justify-center rounded-full text-charcoal/45 transition hover:bg-charcoal/5 hover:text-charcoal"
+          style={{ opacity: leaving ? 0 : 1 }}
         >
           <ArrowLeft className="h-6 w-6" />
         </button>
@@ -245,17 +271,21 @@ export function CardsStep({
               design={card}
               colors={colors}
               index={i}
+              dim={leaving}
               onLifts={(lifts) => update(i, { lifts })}
             />
-            <ShapeControl design={card} gid={i} onOffset={(offset) => update(i, { offset })} />
+            <div className="transition-opacity duration-500" style={{ opacity: leaving ? 0 : 1 }}>
+              <ShapeControl design={card} gid={i} onOffset={(offset) => update(i, { offset })} />
+            </div>
           </div>
         ))}
 
         <button
           type="button"
-          onClick={onNext}
+          onClick={next}
           aria-label="next"
           className="mt-28 flex h-10 w-10 items-center justify-center rounded-full text-charcoal/70 transition hover:bg-charcoal/5 hover:text-charcoal"
+          style={{ opacity: leaving ? 0 : 1 }}
         >
           <ArrowRight className="h-7 w-7" />
         </button>

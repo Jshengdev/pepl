@@ -11,9 +11,10 @@ import type { AvatarDesign, Stroke } from "../types";
 // recolor it from the set palette; draw a face on top with the cursor.
 
 const CIRCLE = 264;
-const ORBIT = CIRCLE / 2 + 24; // handles sit ~24px outside the avatar edge
+const GAP = 48; // handles sit ~48px outside the avatar edge
+const ORBIT = CIRCLE / 2 + GAP;
 const HANDLE = 36;
-const FRAME = CIRCLE + 2 * (24 + HANDLE); // room for the orbiting handles
+const FRAME = CIRCLE + 2 * (GAP + HANDLE); // room for the orbiting handles
 const CENTER = FRAME / 2;
 const PAD = (FRAME - CIRCLE) / 2; // avatar inset within the frame
 

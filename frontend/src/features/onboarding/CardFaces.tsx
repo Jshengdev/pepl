@@ -25,29 +25,46 @@ export function CardFront({ person }: { person: Person }) {
     [Cake, "Birthday", person.birthday],
   ];
   return (
-    <div className="flex h-full w-full flex-col rounded-[34px] bg-white px-7 pb-7 pt-8">
-      {/* identity — tight pair, the loudest thing on the card */}
-      <p className="text-[15px] font-semibold text-[#6e6e6e]">#{person.rank} of pepl</p>
-      <p className="mt-0.5 text-[29px] font-semibold leading-[1.04] tracking-tight text-black">
-        {person.name}
-      </p>
+    <div
+      className="relative h-full w-full overflow-hidden rounded-[34px]"
+      style={{ backgroundColor: FADE_BG }}
+    >
+      {/* painterly tooth — canvas texture + grain, matching the gradient backs */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0"
+        style={{ backgroundImage: PAPER_TEXTURE, backgroundSize: "180px 180px", opacity: 0.6, mixBlendMode: "soft-light" }}
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0"
+        style={{ backgroundImage: GRAIN, backgroundSize: "200px 200px", opacity: 0.14, mixBlendMode: "multiply" }}
+      />
 
-      {/* info — generous gap from the name, tight gaps between rows */}
-      <div className="mt-7 flex flex-col gap-3.5 text-[12.5px]">
-        {inlineRows.map(([Icon, label, val]) => (
-          <div key={label} className="flex items-center gap-2">
-            <Icon className="h-4 w-4 shrink-0 text-[#9a9a9a]" strokeWidth={2} />
-            <span className="font-semibold text-[#6e6e6e]">{label}</span>
-            <span className="ml-1.5 font-semibold text-black">{val}</span>
+      <div className="relative z-10 flex h-full flex-col px-7 pb-7 pt-8">
+        {/* identity — tight pair, the loudest thing on the card */}
+        <p className="text-[15px] font-semibold text-[#6e6e6e]">#{person.rank} of pepl</p>
+        <p className="mt-0.5 text-[29px] font-semibold leading-[1.04] tracking-tight text-black">
+          {person.name}
+        </p>
+
+        {/* info — generous gap from the name, tight gaps between rows */}
+        <div className="mt-7 flex flex-col gap-3.5 text-[12.5px]">
+          {inlineRows.map(([Icon, label, val]) => (
+            <div key={label} className="flex items-center gap-2">
+              <Icon className="h-4 w-4 shrink-0 text-[#9a9a9a]" strokeWidth={2} />
+              <span className="font-semibold text-[#6e6e6e]">{label}</span>
+              <span className="ml-1.5 font-semibold text-black">{val}</span>
+            </div>
+          ))}
+          {/* occupation — value drops to its own line (can run long) */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-2">
+              <Briefcase className="h-4 w-4 shrink-0 text-[#9a9a9a]" strokeWidth={2} />
+              <span className="font-semibold text-[#6e6e6e]">Current Occupation</span>
+            </div>
+            <span className="font-semibold text-black">{person.occupation}</span>
           </div>
-        ))}
-        {/* occupation — value drops to its own line (can run long) */}
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-2">
-            <Briefcase className="h-4 w-4 shrink-0 text-[#9a9a9a]" strokeWidth={2} />
-            <span className="font-semibold text-[#6e6e6e]">Current Occupation</span>
-          </div>
-          <span className="font-semibold text-black">{person.occupation}</span>
         </div>
       </div>
     </div>

@@ -137,8 +137,8 @@ export function StoryStep({ onNext }: { onNext: (story: string) => void }) {
         tell us, how do you spend your day?
       </h1>
 
-      {/* the recording group, vertically centered in the remaining space */}
-      <div className="flex w-full flex-1 flex-col items-center justify-center">
+      {/* the recording group, centered then nudged down a few notches */}
+      <div className="flex w-full flex-1 translate-y-16 flex-col items-center justify-center">
       {/* mic button — the tactile centerpiece */}
       <button
         type="button"

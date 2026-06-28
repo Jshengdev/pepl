@@ -2,16 +2,27 @@
 
 import { useEffect, useState } from "react";
 import { SocialGraph } from "../SocialGraph";
+import { MeshAvatar } from "../MeshAvatar";
+import { CardBack } from "../CardFaces";
 import { PEPL_SMILEY } from "../defaults";
 import type { AvatarDesign, CardDesign, Edge, OnboardingDesign, Person, ShapeKind } from "../types";
 
-// Step 4 — the reveal. "Loading finishes" (a short weave), then the social graph
-// populates: the user at the center, connected to the people pepl surfaced.
-//
-// Placeholder people + edges until the backend lands. The user's node carries
-// their designed avatar + the 3 backings they made; others are seeded.
+// Step 4 — the reveal, as a choreographed sequence:
+//   assemble → the 3 card backings you made appear big (title = loading text)
+//   stack    → once loaded, they gather into one deck with your avatar above
+//   graph    → the deck fades out as the social graph (you + connections) fades in
 
 const USER_ID = "teri";
+const RW = 172; // reveal card width
+const RH = Math.round((RW * 600) / 470);
+
+type Phase = "assemble" | "stack" | "graph";
+
+function cardPhaseTransform(i: number, phase: Phase): string {
+  if (phase === "assemble") return `translate(${(i - 1) * 210}px, 0px) scale(1)`;
+  // gathered into a single deck, sitting just below center (avatar goes above)
+  return `translate(${(i - 1) * -4 + i * 10}px, ${64 + i * 8}px) scale(0.86)`;
+}
 
 function seededAvatar(colors: [string, string, string]): AvatarDesign {
   return {
@@ -99,46 +110,103 @@ const EDGES: Edge[] = [
   { from: "maya", to: "leo", label: "first-time founders" },
 ];
 
+const TITLES: Record<Phase, [string, string]> = {
+  assemble: ["weaving your reflection", "reading the threads in your story…"],
+  stack: ["this is you", "your three cards, and the face you made"],
+  graph: [
+    "the people in your reflection",
+    "tap anyone to see their cards · the lines show what you share",
+  ],
+};
+
 export function RevealStep({ design }: { design: OnboardingDesign }) {
-  const [ready, setReady] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [phase, setPhase] = useState<Phase>("assemble");
+
   useEffect(() => {
-    console.log("[pepl:reveal] weaving graph…");
-    const t = window.setTimeout(() => {
-      setReady(true);
-      console.log("[pepl:reveal] graph populated");
-    }, 1600);
+    console.log("[pepl:reveal] assembling card backings…");
+    const t = window.setTimeout(() => setLoaded(true), 1800);
     return () => window.clearTimeout(t);
   }, []);
 
-  const people = buildPeople(design);
+  useEffect(() => {
+    if (!loaded) return;
+    console.log("[pepl:reveal] loaded → stacking → graph");
+    const t2 = window.setTimeout(() => setPhase("stack"), 120);
+    const t3 = window.setTimeout(() => setPhase("graph"), 1450);
+    return () => {
+      window.clearTimeout(t2);
+      window.clearTimeout(t3);
+    };
+  }, [loaded]);
 
-  if (!ready) {
-    return (
-      <div className="flex flex-col items-center gap-4 text-center">
-        <div className="flex gap-1.5">
-          {[0, 1, 2].map((i) => (
-            <span
-              key={i}
-              className="h-2.5 w-2.5 animate-bounce rounded-full bg-charcoal/40"
-              style={{ animationDelay: `${i * 0.15}s` }}
-            />
-          ))}
-        </div>
-        <p className="text-sm font-medium text-charcoal/60">
-          weaving the reflections of your story…
-        </p>
-      </div>
-    );
-  }
+  const people = buildPeople(design);
+  const user = people[0];
+  const [title, subtitle] = TITLES[phase];
 
   return (
-    <div className="animate-fade-in flex w-full flex-col items-center">
-      <h1 className="text-2xl font-bold tracking-tight text-charcoal">the people in your reflection</h1>
+    <div className="flex h-full w-full flex-1 flex-col items-center">
+      <h1 className="text-2xl font-bold tracking-tight text-charcoal">{title}</h1>
       <p className="mt-2 text-sm text-charcoal/60">
-        tap anyone to see their cards · the lines show what you share
+        {subtitle}
+        {phase === "assemble" && (
+          <span className="ml-1 inline-flex items-end gap-[3px] pb-px align-middle">
+            {[0, 1, 2].map((i) => (
+              <span
+                key={i}
+                className="h-[3px] w-[3px] animate-bounce rounded-full bg-charcoal/45"
+                style={{ animationDelay: `${i * 0.15}s`, animationDuration: "0.9s" }}
+              />
+            ))}
+          </span>
+        )}
       </p>
+
       <div className="relative mt-4 h-[560px] w-full max-w-5xl">
-        <SocialGraph people={people} edges={EDGES} userId={USER_ID} />
+        {/* cards + avatar layer — fades out as the graph fades in */}
+        <div
+          className="absolute inset-0 transition-opacity duration-700"
+          style={{ opacity: phase === "graph" ? 0 : 1, pointerEvents: phase === "graph" ? "none" : "auto" }}
+        >
+          {/* your avatar, surfacing above the gathered deck */}
+          <div
+            className="absolute left-1/2 top-1/2 transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
+            style={{
+              transform: `translate(-50%, -50%) translateY(${phase === "assemble" ? -130 : -168}px) scale(${phase === "assemble" ? 0.7 : 1})`,
+              opacity: phase === "assemble" ? 0 : 1,
+            }}
+          >
+            <MeshAvatar
+              points={user.avatar.points}
+              strokes={user.avatar.strokes}
+              strokeWidth={6}
+              className="h-20 w-20 shadow-[0_10px_28px_-10px_rgba(42,42,40,0.5)]"
+            />
+          </div>
+
+          {design.cards.map((card, i) => (
+            <div
+              key={i}
+              className="absolute left-1/2 top-1/2 transition-all duration-[850ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+              style={{
+                width: RW,
+                height: RH,
+                transform: `translate(-50%, -50%) ${cardPhaseTransform(i, phase)}`,
+                zIndex: phase === "assemble" ? 10 : 30 - i * 10,
+              }}
+            >
+              <CardBack person={user} card={card} index={i} />
+            </div>
+          ))}
+        </div>
+
+        {/* graph layer — fades in for the final reveal */}
+        <div
+          className="absolute inset-0 transition-opacity duration-700"
+          style={{ opacity: phase === "graph" ? 1 : 0, pointerEvents: phase === "graph" ? "auto" : "none" }}
+        >
+          {phase === "graph" && <SocialGraph people={people} edges={EDGES} userId={USER_ID} />}
+        </div>
       </div>
     </div>
   );

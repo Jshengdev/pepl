@@ -28,12 +28,15 @@ function palStops(start: number, n = 5): { color: string; pos: number }[] {
   return stops;
 }
 
-// Column-height profiles (one entry per flute column, ~0–1.5).
-const VALLEY = [1.4, 1.0, 0.65, 0.32, 0.12, 0, 0.12, 0.32, 0.65, 1.0, 1.4];
-const ARCH = [0.2, 0.5, 0.85, 1.15, 1.35, 1.45, 1.35, 1.15, 0.85, 0.5, 0.2];
-const ASCEND = [0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1.05, 1.2, 1.35, 1.5];
-const DESCEND = [1.5, 1.35, 1.2, 1.05, 0.9, 0.75, 0.6, 0.45, 0.3, 0.15, 0];
-const LOWVALLEY = [0.45, 0.32, 0.2, 0.1, 0.04, 0, 0.04, 0.1, 0.2, 0.32, 0.45];
+// Column-height profiles — 7 flute columns per slide (one entry each, ~0–1.5).
+const VALLEY = [1.4, 0.85, 0.4, 0, 0.4, 0.85, 1.4];
+const ARCH = [0.25, 0.7, 1.15, 1.4, 1.15, 0.7, 0.25];
+const ASCEND = [0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5];
+const DESCEND = [1.5, 1.25, 1.0, 0.75, 0.5, 0.25, 0];
+const LOWVALLEY = [0.45, 0.25, 0.1, 0, 0.1, 0.25, 0.45];
+
+// Low blur keeps the 7 columns sharp and distinct (CONFIG.blur=6 is much softer).
+const SHARP_BLUR = 2;
 
 function SlideFlutes({
   start,
@@ -65,7 +68,7 @@ function SlideFlutes({
         className="h-full w-full"
         style={isTop ? { transform: "scaleY(-1)" } : undefined}
       >
-        <FlutedBackground stops={palStops(start)} lifts={lifts} />
+        <FlutedBackground stops={palStops(start)} lifts={lifts} blur={SHARP_BLUR} />
       </div>
     </div>
   );
@@ -80,7 +83,7 @@ function Shell({
   flutes?: ReactNode;
 }) {
   return (
-    <div className="relative h-full w-full overflow-hidden bg-cream">
+    <div className="relative h-full w-full overflow-hidden bg-[#f3f4ea]">
       {flutes}
       <div className="relative z-10 flex h-full w-full flex-col items-center justify-center px-[10cqw] text-center">
         {children}
@@ -133,7 +136,7 @@ function Sub({ children }: { children: ReactNode }) {
 // ── 01 — Title (flutes on the bottom) ────────────────────────────────────────
 function Title() {
   return (
-    <div className="relative h-full w-full overflow-hidden bg-cream">
+    <div className="relative h-full w-full overflow-hidden bg-[#f3f4ea]">
       <SlideFlutes start={6} lifts={VALLEY} pos="bottom" height="58%" />
       <div className="absolute inset-0 z-10 flex flex-col items-center justify-center pb-[5cqh]">
         <div className="animate-fade-up flex items-center gap-[2cqw]">
@@ -220,7 +223,7 @@ function Insight() {
 // ── 05 — Live demo (subtle flutes on the bottom, behind the globe) ────────────
 function Demo() {
   return (
-    <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden bg-cream">
+    <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden bg-[#f3f4ea]">
       <SlideFlutes start={0} lifts={LOWVALLEY} pos="bottom" height="42%" />
       <div className="animate-fade-in relative z-10 aspect-square h-[62cqh]">
         <HeroGlobe />
