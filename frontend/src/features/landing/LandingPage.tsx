@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { FlutedBackground } from "./FlutedBackground";
 import { HeroGlobe } from "./HeroGlobe";
@@ -10,6 +10,19 @@ const TAGLINE = "See the reflection of your story.";
 
 export function LandingPage() {
   const [ctaHover, setCtaHover] = useState(false);
+
+  // A quiet hello for the curious who open the console.
+  useEffect(() => {
+    const w = window as unknown as { __peplHi?: boolean };
+    if (w.__peplHi) return;
+    w.__peplHi = true;
+    console.log("%cpepl", "font:700 22px ui-sans-serif,system-ui;color:#7fa0d8");
+    console.log(
+      "%c✦ you found the source — every story leaves a trace.",
+      "color:#b08fb0;font-style:italic",
+    );
+  }, []);
+
   return (
     <main className="relative flex min-h-dvh w-full flex-col overflow-hidden">
       {/* Monet fluted-gradient backdrop (valley-shaped), behind everything. */}

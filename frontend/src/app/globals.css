@@ -144,6 +144,31 @@ body {
   animation: fade-in 1.8s ease forwards;
 }
 
+/* Pebble-in-a-pond ripple where a pin is dropped on the globe — pepl ≈ pebble,
+   and the tagline is about reflections, so each drop ripples like water. */
+@keyframes pin-ripple {
+  from {
+    transform: translate(-50%, -50%) scale(0.18);
+    opacity: 0.6;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0;
+  }
+}
+
+.pin-ripple {
+  position: absolute;
+  z-index: 25;
+  width: 70px;
+  height: 70px;
+  border-radius: 9999px;
+  border: 1.5px solid rgba(255, 255, 255, 0.8);
+  pointer-events: none;
+  will-change: transform, opacity;
+  animation: pin-ripple 0.85s cubic-bezier(0.2, 0, 0, 1) forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up,
   .animate-fade-in {

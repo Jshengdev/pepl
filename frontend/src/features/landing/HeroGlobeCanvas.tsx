@@ -29,9 +29,13 @@ const PEARL = [
 export default function HeroGlobeCanvas() {
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement>(null);
+  const rippleSeq = useRef(0);
 
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [pins, setPins] = useState<Pin[]>([]);
+  const [ripples, setRipples] = useState<{ id: number; x: number; y: number }[]>(
+    [],
+  );
 
   // A flat, evenly-lit earth — MeshBasic has no day/night terminator, so the
   // globe carries no shadowed side. Tinted toward the Monet "Water Lily Pond"
@@ -72,8 +76,11 @@ export default function HeroGlobeCanvas() {
       g.renderer().setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
 
       const controls = g.controls();
-      // Smooth, continuous auto-rotation (react-globe.gl ticks controls.update()).
-      controls.autoRotate = true;
+      // Smooth, continuous auto-rotation (react-globe.gl ticks controls.update()),
+      // paused for visitors who prefer reduced motion.
+      controls.autoRotate = !window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
       controls.autoRotateSpeed = 0.5;
       controls.enableZoom = false;
       controls.enablePan = false;
@@ -96,7 +103,9 @@ export default function HeroGlobeCanvas() {
     const el = containerRef.current;
     if (!g || !el) return;
     const rect = el.getBoundingClientRect();
-    const coords = g.toGlobeCoords(e.clientX - rect.left, e.clientY - rect.top);
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const coords = g.toGlobeCoords(x, y);
     if (!coords) return; // clicked off the globe — ignore
     setPins((prev) => {
       const next = [...prev, coords];
@@ -105,6 +114,11 @@ export default function HeroGlobeCanvas() {
       );
       return next;
     });
+    // pebble-in-a-pond ripple at the drop point (skip under reduced motion)
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const id = (rippleSeq.current += 1);
+      setRipples((rs) => [...rs, { id, x, y }]);
+    }
   };
 
   // Connect consecutive pins with self-drawing lines — each new arc draws
@@ -165,6 +179,19 @@ export default function HeroGlobeCanvas() {
       {/* Colored grain over the planet — decorative, click-through, masked to
           the globe disc. */}
       <div aria-hidden="true" className="globe-grain pointer-events-none absolute inset-0" />
+
+      {/* Pebble-in-a-pond ripple at each drop point. */}
+      {ripples.map((r) => (
+        <span
+          key={r.id}
+          aria-hidden="true"
+          className="pin-ripple"
+          style={{ left: r.x, top: r.y }}
+          onAnimationEnd={() =>
+            setRipples((rs) => rs.filter((p) => p.id !== r.id))
+          }
+        />
+      ))}
     </div>
   );
 }
