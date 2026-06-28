@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ArrowRight, ArrowLeft, Eraser } from "lucide-react";
+import { ArrowRight, ArrowLeft, Eraser, Undo2, Redo2 } from "lucide-react";
 import { MeshAvatar } from "../MeshAvatar";
 import { SET_PALETTE } from "../palette";
 import type { AvatarDesign, Stroke } from "../types";
@@ -12,9 +12,11 @@ import type { AvatarDesign, Stroke } from "../types";
 
 const FRAME = 340;
 const CIRCLE = 264;
-const ORBIT = 150; // handle distance from center
+const ORBIT = CIRCLE / 2 + 12; // handles sit ~12px outside the avatar edge
 const HANDLE = 36;
 const CENTER = FRAME / 2;
+
+const cloneStrokes = (ss: Stroke[]) => ss.map((s) => s.map((p) => ({ ...p })));
 
 export function ProfileStep({
   value,
@@ -32,6 +34,28 @@ export function ProfileStep({
   const drawRef = useRef<HTMLDivElement>(null);
   const dragMoved = useRef(false);
   const drawing = useRef(false);
+
+  // undo/redo history for the drawing (snapshot the strokes before each change)
+  const [past, setPast] = useState<Stroke[][]>([]);
+  const [future, setFuture] = useState<Stroke[][]>([]);
+  function snapshot() {
+    setPast((p) => [...p, cloneStrokes(value.strokes)]);
+    setFuture([]);
+  }
+  function undo() {
+    if (!past.length) return;
+    const prev = past[past.length - 1];
+    setPast(past.slice(0, -1));
+    setFuture((f) => [...f, cloneStrokes(value.strokes)]);
+    onChange({ ...value, strokes: prev });
+  }
+  function redo() {
+    if (!future.length) return;
+    const next = future[future.length - 1];
+    setFuture(future.slice(0, -1));
+    setPast((p) => [...p, cloneStrokes(value.strokes)]);
+    onChange({ ...value, strokes: next });
+  }
 
   // ── orbit handle drag (move a color around) ──────────────────────────────
   function onHandleDown(e: React.PointerEvent) {
@@ -67,6 +91,7 @@ export function ProfileStep({
     if (!pt) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     drawing.current = true;
+    snapshot(); // record the pre-stroke state so undo removes this stroke
     onChange({ ...value, strokes: [...value.strokes, [pt]] });
   }
   function onDrawMove(e: React.PointerEvent) {
@@ -109,7 +134,7 @@ export function ProfileStep({
   return (
     <div className="flex w-full flex-col items-center">
       <h1 className="text-2xl font-bold tracking-tight text-charcoal">create your profile</h1>
-      <p className="mt-2 text-sm text-charcoal/45">
+      <p className="mt-2 text-sm text-charcoal/60">
         drag the dots to move each color · tap a dot to recolor · draw a face
       </p>
 
@@ -118,19 +143,13 @@ export function ProfileStep({
           type="button"
           onClick={onBack}
           aria-label="back"
-          className="flex h-10 w-10 items-center justify-center rounded-full text-charcoal/40 transition hover:bg-charcoal/5 hover:text-charcoal"
+          className="flex h-10 w-10 items-center justify-center rounded-full text-charcoal/45 transition hover:bg-charcoal/5 hover:text-charcoal"
         >
           <ArrowLeft className="h-6 w-6" />
         </button>
 
         {/* the maker frame */}
         <div ref={frameRef} className="relative" style={{ width: FRAME, height: FRAME }}>
-          {/* selection frame, per wireframe (subtle blue square) */}
-          <div
-            className="absolute rounded-[20px] ring-2 ring-sky/70"
-            style={{ left: 38, top: 38, width: CIRCLE, height: CIRCLE }}
-          />
-
           {/* avatar — mesh gradient + the drawn face */}
           <div className="absolute" style={{ left: 38, top: 38, width: CIRCLE, height: CIRCLE }}>
             <MeshAvatar
@@ -191,13 +210,35 @@ export function ProfileStep({
       {/* palette strip — appears when a handle is selected */}
       <div className="mt-6 h-12">{activeIdx !== null && renderPalette(activeIdx)}</div>
 
-      <button
-        type="button"
-        onClick={() => onChange({ ...value, strokes: [] })}
-        className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-charcoal/40 transition hover:text-charcoal"
-      >
-        <Eraser className="h-3.5 w-3.5" /> clear drawing
-      </button>
+      {/* drawing controls — undo / redo / clear */}
+      <div className="mt-2 flex items-center gap-4 text-xs font-medium text-charcoal/55">
+        <button
+          type="button"
+          onClick={undo}
+          disabled={!past.length}
+          className="inline-flex items-center gap-1.5 transition hover:text-charcoal disabled:cursor-default disabled:opacity-35"
+        >
+          <Undo2 className="h-3.5 w-3.5" /> undo
+        </button>
+        <button
+          type="button"
+          onClick={redo}
+          disabled={!future.length}
+          className="inline-flex items-center gap-1.5 transition hover:text-charcoal disabled:cursor-default disabled:opacity-35"
+        >
+          <Redo2 className="h-3.5 w-3.5" /> redo
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            snapshot();
+            onChange({ ...value, strokes: [] });
+          }}
+          className="inline-flex items-center gap-1.5 transition hover:text-charcoal"
+        >
+          <Eraser className="h-3.5 w-3.5" /> clear
+        </button>
+      </div>
     </div>
   );
 }

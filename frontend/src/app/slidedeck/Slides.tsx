@@ -42,7 +42,7 @@ function Headline({
 }) {
   return (
     <h2
-      className="animate-fade-up max-w-[76cqw] text-balance font-semibold leading-[1.12] tracking-tight text-cream"
+      className="animate-fade-up max-w-[76cqw] text-balance font-semibold leading-[1.05] tracking-tight text-cream"
       style={{ fontSize: size, animationDelay: "0.08s" }}
     >
       {children}
@@ -53,7 +53,7 @@ function Headline({
 function Sub({ children }: { children: ReactNode }) {
   return (
     <p
-      className="animate-fade-up mt-[3cqw] max-w-[62cqw] text-pretty text-[2.2cqw] font-light leading-snug text-cream/55"
+      className="animate-fade-up mt-[3cqw] max-w-[62cqw] text-pretty text-[2.2cqw] font-light leading-tight text-cream/55"
       style={{ animationDelay: "0.18s" }}
     >
       {children}
@@ -124,7 +124,7 @@ function Existential() {
         biggest problem is an existential one.
       </Sub>
       <p
-        className="animate-fade-up mt-[2.6cqw] max-w-[64cqw] text-pretty text-[2.6cqw] font-medium italic leading-snug"
+        className="animate-fade-up mt-[2.6cqw] max-w-[64cqw] text-pretty text-[2.6cqw] font-medium italic leading-tight"
         style={{ color: ACCENT, animationDelay: "0.28s" }}
       >
         Who am I? Why am I here? How do I connect with other people?

@@ -42,7 +42,8 @@ export function OnboardingFlow() {
   return (
     <main className="min-h-dvh w-full p-3">
       <div className="relative flex min-h-[calc(100dvh-24px)] w-full flex-col overflow-hidden rounded-[28px] bg-white shadow-[0_1px_0_rgba(42,42,40,0.04)] ring-1 ring-black/[0.04]">
-        <div className="grid flex-1 place-items-center px-6 py-14">
+        {/* content top-aligned so every step's title sits at the same point */}
+        <div className="flex flex-1 flex-col items-center px-6 pb-28 pt-[6vh]">
           {step === "story" && (
             <StoryStep
               onNext={(s) => {
@@ -62,6 +63,7 @@ export function OnboardingFlow() {
           {step === "cards" && (
             <CardsStep
               value={cards}
+              colors={avatar.points.map((p) => p.color)}
               onChange={setCards}
               onNext={() => setStep("reveal")}
               onBack={() => setStep("profile")}
@@ -70,7 +72,8 @@ export function OnboardingFlow() {
           {step === "reveal" && <RevealStep design={{ story, avatar, cards }} />}
         </div>
 
-        <LoadingBar progress={PROGRESS[step]} label={LABEL[step]} />
+        {/* no loading bar on the reveal — the journey is done */}
+        {step !== "reveal" && <LoadingBar progress={PROGRESS[step]} label={LABEL[step]} />}
       </div>
     </main>
   );

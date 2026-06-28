@@ -4,42 +4,54 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, Mail } from "lucide-react";
 import { MeshAvatar } from "@/features/onboarding/MeshAvatar";
 import { DEFAULT_AVATAR } from "@/features/onboarding/defaults";
+import { FlutedBackground } from "@/features/landing/FlutedBackground";
 
 // /signin — a light placeholder gate. Either button drops you into onboarding
 // (a real auth provider will hook in here later).
+
+// soft pepl gradient revealed on button hover (no drop shadow)
+const HOVER_GRADIENT =
+  "hover:bg-[linear-gradient(100deg,#8fb3e8,#c4a9d0,#e8acbe,#f6c19c)]";
+
 export default function SignInPage() {
   const router = useRouter();
   const go = () => router.push("/onboarding");
 
   return (
-    <main className="grid min-h-dvh w-full place-items-center px-6">
+    <main className="relative flex min-h-dvh w-full flex-col items-center px-6 pt-[12vh]">
+      {/* fluted gradient backdrop — flipped to hang from the top (vs. the
+          landing page, where it grows from the bottom) */}
+      <div className="fixed inset-0 -z-10 [transform:scaleY(-1)]" aria-hidden="true">
+        <FlutedBackground lifted />
+      </div>
+
       <div className="animate-fade-up flex w-full max-w-sm flex-col items-center text-center">
         <MeshAvatar
           points={DEFAULT_AVATAR.points}
           strokes={DEFAULT_AVATAR.strokes}
           strokeWidth={6}
-          className="h-16 w-16 shadow-[0_10px_30px_-12px_rgba(42,42,40,0.5)]"
+          className="h-16 w-16"
         />
-        <span className="font-britti mt-4 select-none text-2xl lowercase tracking-tight text-charcoal">
+        <span className="font-britti mt-1.5 select-none text-2xl lowercase tracking-tight text-charcoal">
           pepl
         </span>
         <h1 className="mt-6 text-balance text-2xl font-semibold tracking-tight text-charcoal">
           see the reflection of your story
         </h1>
-        <p className="mt-2 text-sm text-charcoal/45">sign in to begin</p>
+        <p className="mt-2 text-sm text-charcoal/60">sign in to begin</p>
 
         <div className="mt-8 flex w-full flex-col gap-3">
           <button
             type="button"
             onClick={go}
-            className="inline-flex items-center justify-center gap-2.5 rounded-xl bg-white py-3.5 text-[15px] font-medium text-charcoal ring-1 ring-charcoal/[0.1] shadow-[0_2px_5px_-1px_rgba(42,42,40,0.14),inset_0_1px_0_rgba(255,255,255,0.95)] transition hover:ring-charcoal/20"
+            className={`inline-flex items-center justify-center gap-2.5 rounded-xl bg-white py-3.5 text-[15px] font-medium text-charcoal ring-1 ring-charcoal/[0.1] transition hover:ring-transparent ${HOVER_GRADIENT}`}
           >
             <GoogleG /> continue with Google
           </button>
           <button
             type="button"
             onClick={go}
-            className="group inline-flex items-center justify-center gap-2 rounded-xl bg-charcoal py-3.5 text-[15px] font-medium text-white transition hover:opacity-90"
+            className={`group inline-flex items-center justify-center gap-2 rounded-xl bg-charcoal py-3.5 text-[15px] font-medium text-white transition hover:text-charcoal ${HOVER_GRADIENT}`}
           >
             <Mail className="h-4 w-4" /> continue with email
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />

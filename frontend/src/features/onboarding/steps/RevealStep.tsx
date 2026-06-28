@@ -124,7 +124,7 @@ export function RevealStep({ design }: { design: OnboardingDesign }) {
             />
           ))}
         </div>
-        <p className="text-sm font-medium text-charcoal/55">
+        <p className="text-sm font-medium text-charcoal/60">
           weaving the reflections of your story…
         </p>
       </div>
@@ -134,7 +134,7 @@ export function RevealStep({ design }: { design: OnboardingDesign }) {
   return (
     <div className="animate-fade-in flex w-full flex-col items-center">
       <h1 className="text-2xl font-bold tracking-tight text-charcoal">the people in your reflection</h1>
-      <p className="mt-2 text-sm text-charcoal/45">
+      <p className="mt-2 text-sm text-charcoal/60">
         tap anyone to see their cards · the lines show what you share
       </p>
       <div className="relative mt-4 h-[560px] w-full max-w-5xl">

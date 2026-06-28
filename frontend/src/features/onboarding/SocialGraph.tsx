@@ -105,7 +105,7 @@ export function SocialGraph({
               className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2"
               style={{ left: `${mx}%`, top: `${my}%` }}
             >
-              <span className="whitespace-nowrap rounded-full bg-cream/90 px-2.5 py-1 text-[11px] font-medium text-charcoal/60 ring-1 ring-black/[0.04]">
+              <span className="whitespace-nowrap rounded-full bg-cream/90 px-2.5 py-1 text-[11px] font-medium text-charcoal/70 ring-1 ring-black/[0.04]">
                 {e.label}
               </span>
             </div>

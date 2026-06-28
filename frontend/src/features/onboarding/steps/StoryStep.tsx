@@ -48,6 +48,9 @@ export function StoryStep({ onNext }: { onNext: (story: string) => void }) {
 
   const recRef = useRef<SR | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [scrollOffset, setScrollOffset] = useState(0);
 
   useEffect(() => {
     // Feature-detect after mount: SpeechRecognition is window-only, so checking
@@ -117,9 +120,19 @@ export function StoryStep({ onNext }: { onNext: (story: string) => void }) {
   const transcript = (finalText + " " + interim).trim();
   const hasStory = finalText.trim().length > 0;
 
+  // Keep the newest text pinned to the bottom: measure overflow past 3 lines and
+  // scroll the block up by that amount (smoothly, via a CSS transition).
+  useEffect(() => {
+    const el = scrollRef.current;
+    const wrap = wrapRef.current;
+    if (!el || !wrap) return;
+    const over = el.scrollHeight - wrap.clientHeight;
+    setScrollOffset(over > 0 ? over : 0);
+  }, [transcript]);
+
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col items-center text-center">
-      <p className="text-sm font-semibold text-charcoal/45">your first story</p>
+      <p className="text-sm font-semibold text-charcoal/60">your first story</p>
       <h1 className="mt-1 text-2xl font-bold tracking-tight text-charcoal sm:text-[28px]">
         tell us, how do you spend your day?
       </h1>
@@ -151,19 +164,30 @@ export function StoryStep({ onNext }: { onNext: (story: string) => void }) {
         {fmt(remaining)}
       </div>
 
-      {/* transcript with bottom gradient fade */}
-      <div className="relative mt-4 h-20 w-full max-w-md overflow-hidden">
+      {/* transcript — capped at 3 lines, newest at the bottom, older lines
+          scrolling up and dissolving into the bg through a top gradient mask */}
+      <div
+        ref={wrapRef}
+        className="relative mt-5 h-[84px] w-full max-w-md overflow-hidden"
+        style={{
+          maskImage: "linear-gradient(to bottom, transparent 0%, #000 45%, #000 100%)",
+          WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, #000 45%, #000 100%)",
+        }}
+      >
         <div
-          className="h-full overflow-hidden px-2 text-center text-[15px] leading-relaxed text-charcoal/70"
+          ref={scrollRef}
+          className="flex min-h-[84px] flex-col justify-end px-2 text-center text-[15px] leading-7 text-charcoal/70"
           style={{
-            maskImage: "linear-gradient(to bottom, #000 45%, transparent 100%)",
-            WebkitMaskImage: "linear-gradient(to bottom, #000 45%, transparent 100%)",
+            transform: `translateY(${-scrollOffset}px)`,
+            transition: "transform 380ms cubic-bezier(0.22, 1, 0.36, 1)",
           }}
         >
-          {transcript ||
-            (supported
-              ? "your words appear here as you speak…"
-              : "voice transcription needs Chrome or Edge — you can still continue.")}
+          <p>
+            {transcript ||
+              (supported
+                ? "your words appear here as you speak…"
+                : "voice transcription needs Chrome or Edge — you can still continue.")}
+          </p>
         </div>
       </div>
 
