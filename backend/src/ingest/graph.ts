@@ -53,10 +53,9 @@ export const extractNode = defineNode({
     if (signals.length === 0)
       throw new Error("[pepl:node:extract] no signals to extract from");
 
-    const hint =
-      'The subject of these signals is Johnny Sheng (id: "johnny"). Recurring names you will likely find include Sarah and Teri (Johnny\'s cofounders), Lauren, Shawn, and Jasmine. Include a person ONLY if the signals support them, and ground closeness in what the signals actually say.';
+    // No name hints — identity is derived purely from the signals, so this works on ANY account.
     const corpus = signals.map((s) => `[${s.id}] ${s.text} (${s.source})`).join("\n");
-    const prompt = `${hint}\n\nSIGNALS (${signals.length}):\n${corpus}`;
+    const prompt = `SIGNALS (${signals.length}):\n${corpus}`;
 
     console.log(`[pepl:node:extract] EXTRACT in: signals=${signals.length} chars=${prompt.length}`);
     const text = await complete({ tier: "EXTRACT", system: EXTRACT_SYSTEM, prompt, json: true, temperature: 0 });
@@ -77,7 +76,7 @@ export const graphNode = defineNode({
   name: "graph",
   in: z.object({ people: z.array(Person), edges: z.array(Edge) }),
   out: RelationshipGraph,
-  // S1 canned ring placement; live path places rings by closeness + seeds the correction beat.
+  // S1 canned ring placement; live path places rings by closeness (v3: no correction beat, seededWrong empty).
   stub: ({ people, edges }) => {
     const placed = people.map((p) => ({ ...p, ring: ringFor(p.closeness) }));
 
@@ -112,20 +111,12 @@ export const graphNode = defineNode({
         `[pepl:node:graph] no ring 1–2 correspondent backed by an edge — graph too thin to be real (people=${placed.length})`,
       );
 
-    // Correction beat, grounded in sig-rage-bait-correction ("Teri's here, Johnny's here — that's so wrong"):
-    // seed ONE wrong ring on the thinnest-but-real person (closest to the edge of the graph, still
-    // backed by an edge) so the user goes "that's wrong" and corrects it. correctGraph drops the seed.
-    const subjectId = placed.find((p) => p.ring === 0)?.id;
-    const candidate = placed
-      .filter((p) => p.id !== subjectId && p.ring < 3 && edges.some((e) => e.from === p.id || e.to === p.id))
-      .sort((a, b) => a.closeness - b.closeness)[0];
-    if (!candidate)
-      throw new Error("[pepl:node:graph] no thin-but-real person to seed the correction beat on");
-    candidate.ring = (candidate.ring + 1) as 0 | 1 | 2 | 3;
-    const seededWrong = [{ personId: candidate.id, field: "ring" }];
+    // v3 has NO correction beat — a wrong ring with no fix UI is just a visible error, so no seed.
+    // The closeness-driven ring placement above is what ships. (correctGraph stays dormant for a future beat.)
+    const seededWrong: { personId: string; field: string }[] = [];
 
     console.log(
-      `[pepl:node:graph] people=${placed.length} edges=${edges.length} seededWrong=${seededWrong.length} wrong=${candidate.id}.ring`,
+      `[pepl:node:graph] people=${placed.length} edges=${edges.length} seededWrong=${seededWrong.length}`,
     );
     return { people: placed, edges, seededWrong };
   },

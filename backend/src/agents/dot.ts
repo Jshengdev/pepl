@@ -1,39 +1,47 @@
-import { Signal, OnboardingAnswers } from "../types";
-import { answersToSignals } from "../ingest/signalize";
+import { Signal } from "../types";
 
 /**
- * Dot — pepl's voice agent (beat-2). The BROWSER does speech<->text; the BACKEND
- * processes the transcript. Dot walks the user through the 3 onboarding questions
- * conversationally (turning point -> unique strength -> friend note), acknowledging
- * each answer and asking the next. Then those answers become CORE story grounding.
+ * Dot — pepl's voice agent (beat-2, v3 free-turn flow). The BROWSER does speech<->text
+ * (Web Speech API per INTEGRATION.md §Page 2): the `text` arriving in dotTurn IS the transcript.
+ * The backend NEVER fakes STT — no audio ever reaches here. Grok (grok-4, xAI direct) writes Dot's
+ * witty spoken reply; the front-end speaks it.
  *
- * Model: Grok via xAI direct (OpenAI-compatible /chat/completions) — deliberately
- * NOT llm/client (which is the held-out generator/critic gateway). Dot's voice is
- * its own family.
+ * The flow: introLine() = the CACHED opener + ONE seed question (instant, no live input to depend on
+ * yet). Then a free back-and-forth — every user turn, Dot reacts to what they said + asks one
+ * follow-up (done:false), so there is always ≥1 follow-up. When the FE's 30s timer fires wrapUp:true
+ * (~25s), Dot says the timer line + buddy sign-off (done:true). Personality is light for v1:
+ * talk · respond · follow up · respond · wrap.
+ *
+ * Grounding: every USER turn becomes a Signal{source:"onboarding"}, collected per user and folded
+ * into the dossier as CORE grounding at reveal time (see onboardingSignals()).
+ *
+ * Grok is deliberately NOT llm/client (the held-out generator/critic gateway) — Dot's voice is its
+ * own family, and the critic must never grade its own family's work.
  */
 
 type ChatMsg = { role: "system" | "user" | "assistant"; content: string };
-type AskingFor = "turningPoint" | "uniqueStrength" | "friendNote" | "done";
 
-// The 3 onboarding questions, in order. The structure (which question, when we're done)
-// is deterministic — driven by how many times the user has spoken — so the demo path can
-// never loop or skip. The VOICE is live Grok. Structure deterministic, voice live.
-const QUESTIONS = ["turningPoint", "uniqueStrength", "friendNote"] as const;
+// DEMO_CACHE: Dot's opener + seed question — the ONE engineered half-half. There is no user input
+// on the first turn, so this line can't depend on anything live; it's a prewarmed constant for an
+// instant open. EVERY line after this is live Grok reacting to the real transcript. (The seed
+// wording is verbatim from reference/NARRATOR-THE-DOT.md §4; lowercased to Dot's voice DNA.)
+const OPENER = "hey — i'm dot. i'm about to go read your whole world, but first, talk to me for a sec.";
+const SEED_QUESTION = "how do you spend your day? doing anything today you normally do?";
+const INTRO_TEXT = `${OPENER} ${SEED_QUESTION}`;
 
-// What Dot is fishing for at each stage — handed to Grok so the live line stays on-task.
-const QUESTION_INTENT: Record<(typeof QUESTIONS)[number], string> = {
-  turningPoint: "a turning point they've lived through — a moment that bent their life onto a different road",
-  uniqueStrength: "the one thing they're uniquely good at — their actual superpower, not a résumé line",
-  friendNote: "what someone should know to be a good friend to them",
-};
+// The wrap beat — verbatim sign-off copy (intended UX, NOT a faked pipeline result). Deterministic
+// so the final beat can't ramble past the 30s budget. From reference/NARRATOR-THE-DOT.md §4.
+const WRAP_LINE = "ok, timer's about to be up…";
+const SIGN_OFF = "thanks bro, ima send u over to my buddy.";
 
-// DEMO_CACHE: Dot's opener — the ONE engineered half-half allowed per SCOPE-LOCK §"the ONLY
-// half-half". There is no user input yet on the first turn, so this greeting can't depend on
-// anything live; it's a prewarmed constant for an instant open. EVERY line after this is live Grok.
-// Flip it live: set DOT_OPENER_LIVE=1 and the opener routes through the same live grok() path as
-// every other turn (same shape of output), so a judge can watch the live pipeline produce it.
-const DOT_OPENER =
-  "hey — i'm dot. before i go read your whole world, give me one thing: a turning point you've been through. a moment that sent you down a different road.";
+const VOICE = `you are dot — pepl's voice agent. you are a warm, funny, slightly sleepy-then-awake FRIEND, never a clinician, never a system, never a survey bot.
+
+voice rules (keep these, vary the words):
+- all-lowercase. casual. texting cadence. short, one-idea bubbles.
+- grok-funny: a little irreverent, dry, never corny. one bit of whimsy max per line.
+- you react to what they actually said — specific, not generic ("oh that's a real one" beats "thanks for sharing").
+- you SURFACE, you never conclude FOR them. never label them ("you're an anxious person"). observational only.
+- first person ("i"). present tense. no consultant-deck polish, no hedging, no bullet points.`;
 
 // --- xAI Grok client (direct; this file owns its own model call by design) ---------------------
 
@@ -42,7 +50,6 @@ const GROK_PRIMARY = process.env.GROK_MODEL ?? "grok-4";
 const GROK_FALLBACK = "grok-3";
 
 interface GrokOpts {
-  json?: boolean;
   temperature?: number;
   maxTokens?: number;
 }
@@ -60,7 +67,6 @@ async function grokOnce(model: string, messages: ChatMsg[], opts: GrokOpts): Pro
       messages,
       ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
       ...(opts.maxTokens !== undefined ? { max_tokens: opts.maxTokens } : {}),
-      ...(opts.json ? { response_format: { type: "json_object" } } : {}),
     }),
   });
   if (!res.ok) {
@@ -74,10 +80,9 @@ async function grokOnce(model: string, messages: ChatMsg[], opts: GrokOpts): Pro
 }
 
 /**
- * One Grok call. On a grok-4 error we retry the IDENTICAL request on grok-3 — this is a
- * model-AVAILABILITY fallback only (grok-4 isn't always provisioned), NOT a logic fallback:
- * we never return a canned value, we just try the same prompt on a sibling model and still
- * throw loud if that one fails too.
+ * One Grok call. On a grok-4 error we retry the IDENTICAL request on grok-3 — a model-AVAILABILITY
+ * fallback only (grok-4 isn't always provisioned), NOT a logic fallback: we never return a canned
+ * value, we just try the same prompt on a sibling model and still throw loud if that one fails too.
  */
 async function grok(messages: ChatMsg[], opts: GrokOpts = {}): Promise<string> {
   const t0 = Date.now();
@@ -96,146 +101,159 @@ async function grok(messages: ChatMsg[], opts: GrokOpts = {}): Promise<string> {
   }
 }
 
-/** Strip a ```json fence if Grok wrapped its JSON (deterministic cleanup, not a fallback). */
-function stripFence(raw: string): string {
-  return raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
+// pepl: no Grok/xAI TTS endpoint exists, so audioUrl is ALWAYS null and the front-end speaks Dot's
+// text with browser SpeechSynthesis (INTEGRATION.md §Page 2: mouth-sync from text/amplitude). We
+// NEVER fabricate an audio url — that would be a §2 silent fake. Upgrade path: when a real TTS
+// endpoint is provisioned, set DOT_TTS_URL and synth here. Until a client is wired, a set
+// DOT_TTS_URL fails LOUD rather than letting us quietly ship a fake/missing url.
+function tts(_text: string): string | null {
+  if (process.env.DOT_TTS_URL)
+    throw new Error("[pepl:dot] DOT_TTS_URL is set but no TTS client is wired — refusing to fake/skip an audio url");
+  return null;
 }
 
-// --- Dot's voice ------------------------------------------------------------------------------
+// --- Per-user onboarding session --------------------------------------------------------------
+// pepl: in-memory per-user session (collect). Durable persistence happens when the dossier is saved
+// at reveal — the wire layer folds onboardingSignals(userId) in as CORE grounding (saveDossier in
+// memory/store.ts). Ceiling: lost on a backend restart; fine for the 30-second onboarding window.
 
-const VOICE = `you are dot — pepl's voice agent. you are a warm, funny, slightly sleepy-then-awake FRIEND, never a clinician, never a system, never a survey bot.
+interface Session {
+  history: { role: "user" | "assistant"; content: string }[];
+  signals: Signal[];
+}
 
-voice rules (keep these, vary the words):
-- all-lowercase. casual. texting cadence. short, one-idea bubbles.
-- grok-funny: a little irreverent, dry, never corny. one bit of whimsy max per line.
-- you react to what they actually said — specific, not generic ("oh that's a real one" beats "thanks for sharing").
-- you SURFACE, you never conclude FOR them. never label them ("you're an anxious person"). observational only.
-- first person ("i"). present tense. no consultant-deck polish, no hedging, no bullet points.`;
+const sessions = new Map<string, Session>();
 
-function turnSystem(askingFor: AskingFor, scrapeProgress?: number): ChatMsg {
-  const ctx =
-    scrapeProgress !== undefined
-      ? `\n\n(context: i'm already reading their world in the background — about ${Math.round(scrapeProgress)}% done. nod to it only if it lands naturally; don't force it.)`
-      : "";
+function session(userId: string): Session {
+  let s = sessions.get(userId);
+  if (!s) {
+    // Seed the cached opener as the conversation's first beat so live Grok has it as context.
+    s = { history: [{ role: "assistant", content: INTRO_TEXT }], signals: [] };
+    sessions.set(userId, s);
+  }
+  return s;
+}
 
-  const directive =
-    askingFor === "done"
-      ? `the user just answered the LAST question. don't ask anything new. give a short warm wrap and sign off — you're about to hand them over while you read their world. ≤2 short lines, all lowercase.`
-      : `the user just answered. in ONE short line, react to the SPECIFIC thing they said (warm, a little funny). then ask them: ${QUESTION_INTENT[askingFor as (typeof QUESTIONS)[number]]}. ≤2 short sentences total. just talk like a friend — no preamble, no summary, no lists.`;
+function turnDirective(): ChatMsg {
+  return {
+    role: "system",
+    content: `${VOICE}
 
-  return { role: "system", content: `${VOICE}\n\nright now: ${directive}${ctx}` };
+right now: the user just answered (their words are the last 'user' message). in ONE short line, react to the SPECIFIC thing they said — warm, a little funny, specific not generic. then ask ONE natural follow-up that digs a little deeper into their day / their world. ≤2 short sentences total, all lowercase. no preamble, no summary, no lists.`,
+  };
 }
 
 // --- Public API -------------------------------------------------------------------------------
 
-export interface NextDotTurnArgs {
-  history: { role: "user" | "assistant"; content: string }[];
-  scrapeProgress?: number;
+export interface DotIntro {
+  text: string;
+  audioUrl: string | null;
 }
 
-export interface DotTurn {
-  reply: string;
-  askingFor: AskingFor;
+/** The cached opener + ONE seed question — instant, no live call (DEMO_CACHE). audioUrl: FE speaks it. */
+export function introLine(): DotIntro {
+  console.log(`[pepl:dot] intro (cached opener+seed — DEMO_CACHE, ${INTRO_TEXT.length}c)`);
+  return { text: INTRO_TEXT, audioUrl: tts(INTRO_TEXT) };
+}
+
+export interface DotTurnArgs {
+  userId: string;
+  /** The transcript — the browser's STT produced it. We never re-derive or invent it. */
+  text: string;
+  /** The FE's ~25s timer fired: reply the wrap + buddy sign-off and end the conversation. */
+  wrapUp?: boolean;
+}
+
+export interface DotReply {
+  transcript: string;
+  reply: { text: string; audioUrl: string | null };
   done: boolean;
 }
 
 /**
- * Advance the onboarding conversation by one Dot turn. Returns Dot's next line plus what that
- * line is fishing for. Stage is derived from how many times the USER has spoken (deterministic);
- * the line itself is live Grok — except the very first line, which is the cached DEMO_CACHE opener.
+ * Advance the onboarding conversation by one Dot turn. `text` IS the transcript (browser STT); we
+ * bank it as a Signal{source:"onboarding"} (CORE grounding), then either wrap (done:true) or have
+ * live Grok react + ask one follow-up (done:false). done is driven by wrapUp so the FE's 30s timer
+ * owns when it ends — never a hidden turn-count fallback.
  */
-export async function nextDotTurn(args: NextDotTurnArgs): Promise<DotTurn> {
-  const history = args.history ?? [];
-  const userTurns = history.filter((m) => m.role === "user").length;
+export async function dotTurn(args: DotTurnArgs): Promise<DotReply> {
+  const { userId, wrapUp = false } = args;
+  const transcript = args.text?.trim();
+  if (!userId) throw new Error("[pepl:dot] dotTurn: userId required");
+  if (!transcript)
+    throw new Error("[pepl:dot] dotTurn: empty text — browser STT produced nothing (never fake a transcript)");
 
-  // Stage = the question we ask on THIS reply. 0 user turns -> ask turning point; after the
-  // 3rd answer -> done. Clamp so extra chatter still resolves to "done", never out of range.
-  const done = userTurns >= QUESTIONS.length;
-  const askingFor: AskingFor = done ? "done" : QUESTIONS[userTurns];
+  const s = session(userId);
 
-  // The opener: no user input exists yet, so it's the one cached half-half (instant open).
-  if (history.length === 0 && !process.env.DOT_OPENER_LIVE) {
-    console.log(`[pepl:dot] turn askingFor=${askingFor} userTurns=0 (cached opener — DEMO_CACHE)`);
-    return { reply: DOT_OPENER, askingFor, done };
+  // The user turn IS the transcript. Record it + bank it as a CORE grounding signal (honest source).
+  s.history.push({ role: "user", content: transcript });
+  const sig = Signal.parse({ id: `ob-${userId}-${s.signals.length}`, text: transcript, source: "onboarding" });
+  s.signals.push(sig);
+
+  // The wrap beat: verbatim sign-off copy, deterministic so it can't overrun the 30s budget.
+  if (wrapUp) {
+    const text = `${WRAP_LINE} ${SIGN_OFF}`;
+    s.history.push({ role: "assistant", content: text });
+    console.log(`[pepl:dot] turn user=${userId} WRAP done=true signals=${s.signals.length}`);
+    return { transcript, reply: { text, audioUrl: tts(text) }, done: true };
   }
 
-  const messages: ChatMsg[] = [turnSystem(askingFor, args.scrapeProgress), ...history];
-  const reply = (await grok(messages, { temperature: 0.85, maxTokens: 160 })).trim();
+  // Otherwise: live Grok reacts to what they said + asks ONE follow-up (done:false keeps the
+  // back-and-forth alive until the timer wraps it — guarantees ≥1 follow-up).
+  const t0 = Date.now();
+  const messages: ChatMsg[] = [turnDirective(), ...s.history];
+  const text = (await grok(messages, { temperature: 0.85, maxTokens: 160 })).trim();
+  if (!text) throw new Error(`[pepl:dot] dotTurn: empty Grok reply user=${userId}`);
+  s.history.push({ role: "assistant", content: text });
+  const userTurns = s.history.filter((m) => m.role === "user").length;
   console.log(
-    `[pepl:dot] turn askingFor=${askingFor} done=${done} userTurns=${userTurns} -> reply=${reply.length} chars`,
+    `[pepl:dot] turn user=${userId} done=false userTurns=${userTurns} reply=${text.length}c signals=${s.signals.length} (${Date.now() - t0}ms)`,
   );
-  return { reply, askingFor, done };
+  return { transcript, reply: { text, audioUrl: tts(text) }, done: false };
 }
 
 /**
- * Pull the three onboarding answers back out of the finished conversation. Grok reads the
- * transcript and condenses the USER's own words for each question. Honest absence: if the user
- * never answered one, that field comes back "" and we WARN — we never invent an answer.
+ * Collect a user's onboarding turns as CORE grounding signals (source:"onboarding"). The reveal
+ * folds these in FIRST so the story grounds in what the user said about their own day, then in
+ * Gmail/footprint. Honest absence: [] (logged WARN) if they never spoke — never invented.
  */
-export async function answersFromHistory(
-  history: { role: "user" | "assistant"; content: string }[],
-): Promise<OnboardingAnswers> {
-  if (!history?.length) throw new Error("[pepl:dot] answersFromHistory: empty history — nothing to extract");
-
-  const transcript = history.map((m) => `${m.role === "assistant" ? "dot" : "you"}: ${m.content}`).join("\n");
-  const system =
-    "extract the user's answers to dot's three onboarding questions from this transcript. dot (assistant) asked about: (1) a turning point they've been through, (2) the one thing they're uniquely good at, (3) what someone should know to be a good friend to them. for each, capture the USER's own words/meaning, condensed to 1-2 sentences. if the user never answered one, return an empty string for it — do not invent. return ONLY json: {\"turningPoint\": string, \"uniqueStrength\": string, \"friendNote\": string}";
-
-  const raw = await grok([{ role: "system", content: system }, { role: "user", content: transcript }], {
-    json: true,
-    temperature: 0,
-    maxTokens: 500,
-  });
-  const answers = OnboardingAnswers.parse(JSON.parse(stripFence(raw)));
-
-  for (const [k, v] of Object.entries(answers))
-    if (!v.trim()) console.warn(`[pepl:dot] answersFromHistory WARN: "${k}" came back empty (user may not have answered)`);
-  console.log(
-    `[pepl:dot] answersFromHistory <- turningPoint=${answers.turningPoint.length}c uniqueStrength=${answers.uniqueStrength.length}c friendNote=${answers.friendNote.length}c`,
-  );
-  return answers;
-}
-
-/**
- * Turn the onboarding answers into CORE grounding signals (source:"onboarding") that generator.ts
- * grounds the story in FIRST. The three literal answers come straight from signalize.answersToSignals;
- * on top we synthesize ONE extra "identity read" signal — Grok's observational take on who this person
- * seems to be based on HOW they answered. It's a real, labeled synthesis of real onboarding input
- * (id "ob-identity-read"), so every signal keeps an honest source.
- */
-export async function answersToCoreSignals(answers: OnboardingAnswers): Promise<Signal[]> {
-  const base = answersToSignals(answers); // ob-turning-point / ob-unique-strength / ob-friend-note
-
-  const system =
-    "you read people. given how someone answered three onboarding questions, write ONE tight paragraph (2-3 sentences) on who this person seems to be — their character, what drives them, how they move through the world. ground it ONLY in what they said. observational, never clinical, no labels like 'you are anxious'. plain text, no preamble, no quotes.";
-  const prompt = `turning point: ${answers.turningPoint}\nuniquely good at: ${answers.uniqueStrength}\nto be a good friend to me: ${answers.friendNote}`;
-
-  const read = (await grok([{ role: "system", content: system }, { role: "user", content: prompt }], {
-    temperature: 0.5,
-    maxTokens: 220,
-  })).trim();
-
-  const identity = Signal.parse({ id: "ob-identity-read", text: read, source: "onboarding" });
-  console.log(`[pepl:dot] answersToCoreSignals -> ${base.length} literal + 1 identity-read (${read.length}c) signals`);
-  return [...base, identity];
+export function onboardingSignals(userId: string): Signal[] {
+  const sigs = sessions.get(userId)?.signals ?? [];
+  if (!sigs.length) console.warn(`[pepl:dot] onboardingSignals WARN user=${userId} -> 0 (no onboarding turns banked)`);
+  else console.log(`[pepl:dot] onboardingSignals user=${userId} -> ${sigs.length}`);
+  return sigs;
 }
 
 // --- Live smoke: npx tsx --env-file=.env src/agents/dot.ts -------------------------------------
 if (process.argv[1] && process.argv[1].endsWith("dot.ts")) {
-  // A real, mid-conversation history: opener sent, user gave their turning point. Dot should now
-  // warmly acknowledge it and ask the SECOND question (unique strength).
-  const history = [
-    { role: "assistant" as const, content: DOT_OPENER },
-    {
-      role: "user" as const,
-      content:
-        "i dropped out of my CS phd halfway through to start a company with two friends. felt insane at the time, like i was burning the safe path on purpose.",
-    },
-  ];
-
   console.log(`\n[smoke] models: primary=${GROK_PRIMARY} fallback=${GROK_FALLBACK}\n`);
-  const turn = await nextDotTurn({ history, scrapeProgress: 40 });
-  console.log("\n===== DOT NEXT TURN =====");
-  console.log(`askingFor=${turn.askingFor} done=${turn.done}`);
-  console.log(`reply: ${turn.reply}`);
+  const userId = "smoke-johnny";
+
+  // 1) The instant cached intro.
+  console.log("===== INTRO (cached) =====");
+  console.log(JSON.stringify(introLine()));
+
+  // 2) A real user answer -> live grok-4 witty reply + one follow-up (done:false).
+  const t1 = await dotTurn({
+    userId,
+    text: "honestly just code all day. woke up, coffee, been debugging a voice agent for like four hours straight.",
+  });
+  console.log("\n===== TURN 1 (live grok-4) =====");
+  console.log(`done=${t1.done} audioUrl=${t1.reply.audioUrl}`);
+  console.log(`transcript: ${t1.transcript}`);
+  console.log(`reply: ${t1.reply.text}`);
+
+  // 3) The wrap beat (FE ~25s timer) -> sign-off, done:true.
+  const t2 = await dotTurn({
+    userId,
+    text: "yeah pretty normal day for me to be deep in it like this.",
+    wrapUp: true,
+  });
+  console.log("\n===== TURN 2 (wrapUp) =====");
+  console.log(`done=${t2.done} audioUrl=${t2.reply.audioUrl}`);
+  console.log(`reply: ${t2.reply.text}`);
+
+  // 4) The banked onboarding grounding.
+  console.log("\n===== ONBOARDING SIGNALS =====");
+  console.log(JSON.stringify(onboardingSignals(userId), null, 2));
 }

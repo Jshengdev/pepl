@@ -101,12 +101,104 @@ export const Card = z.discriminatedUnion("kind", [
 ]);
 export type Card = z.infer<typeof Card>;
 
+// --- The bento dossier (Part 5) — the FINAL reveal payload --------------------------------------
+// Rides ON TOP of the Card union (which still backs cardsNode internally). Every compartment ("bit")
+// is GROUNDED or it FAILS loud (CLAUDE.md §2): a bit's grounding IS the receipt the UI renders.
+// Supersedes the loose WowCard/MbtiCard reveal — those fold into bits; Story + RelationshipGraph
+// ride along as structured bit `value`s.
+
+export const Mode = z.enum(["live", "cached"]); // honest in EVERY payload
+export type Mode = z.infer<typeof Mode>;
+
+export const Grounding = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("signal"), signalId: z.string() }), // ONE clickable receipt
+  // aggregate over N; critic:true = survived the held-out critic; from:[] = honest absence (e.g. claimsCut)
+  z.object({ kind: z.literal("computed"), from: z.array(z.string()), critic: z.boolean() }),
+  z.object({ kind: z.literal("user"), source: z.enum(["drawn", "onboarding"]) }), // the one human-made bit
+]);
+export type Grounding = z.infer<typeof Grounding>;
+
+export const Bit = z.discriminatedUnion("status", [
+  z.object({
+    status: z.literal("ok"),
+    label: z.string(),
+    value: z.union([z.string(), z.record(z.string(), z.unknown())]),
+    grounding: Grounding,
+  }),
+  // red FAILED badge, NEVER a fabricated value (a §2 silent fallback)
+  z.object({ status: z.literal("failed"), label: z.string(), triedSource: z.string() }),
+]);
+export type Bit = z.infer<typeof Bit>;
+
+export const DossierCard = z.object({
+  kind: z.enum(["identity", "story", "stats", "people", "personality"]),
+  title: z.string(),
+  bits: z.array(Bit), // 3–6, ~5
+});
+export type DossierCard = z.infer<typeof DossierCard>;
+
+// smiley null until /api/card (story 04) — degrade the Identity smiley bit to status:"failed",
+// NEVER an empty-string default (that's a silent §2 fallback).
+export const Dossier = z.object({
+  cards: z.array(DossierCard),
+  smiley: z.string().nullable(),
+  proof: z.object({ peopleSurfaced: z.number(), claimsCut: z.number() }),
+  mode: Mode,
+});
+export type Dossier = z.infer<typeof Dossier>;
+
+// --- The map + Knot the connector (Part 7) -----------------------------------------------------
+
+export const MapNode = z.object({
+  userId: z.string(),
+  name: z.string(),
+  smiley: z.string().nullable(), // the drawn smiley avatar; null until /api/card
+});
+export type MapNode = z.infer<typeof MapNode>;
+
+// The grounded unit is a TWO-SIDED claim: a "you both X" is unverifiable judged once, so split A/B and
+// judge each against its own corpus. Each Similarity cites ONE real aSignalId from A + ONE bSignalId from B.
+export const Similarity = z.object({
+  dimension: z.enum([
+    "shared-person",
+    "shared-theme",
+    "same-space",
+    "shared-interest",
+    "narrative-voice",
+    "shared-origin",
+    "parallel-arc",
+  ]),
+  theme: z.string(),
+  aClaim: z.string(),
+  aSignalId: z.string(),
+  bClaim: z.string(),
+  bSignalId: z.string(),
+});
+export type Similarity = z.infer<typeof Similarity>;
+
+export const ConnectionStory = z.object({
+  text: z.string(),
+  groundedIn: z.array(Similarity), // === link.groundedIn (the bento tiles)
+});
+export type ConnectionStory = z.infer<typeof ConnectionStory>;
+
+// --- Onboarding (Part 2) -----------------------------------------------------------------------
+// Legacy: the old 3-field struct. Still exported (and still REQUIRED) so the existing /run + dot.ts
+// path compiles unchanged — superseded by the free-turn v3 flow below (OnboardingTurn).
 export const OnboardingAnswers = z.object({
   turningPoint: z.string(),
   uniqueStrength: z.string(),
   friendNote: z.string(),
 });
 export type OnboardingAnswers = z.infer<typeof OnboardingAnswers>;
+
+// v3 onboarding contract change: ONE seed question (daily routine) + free back-and-forth. Each USER
+// turn persists as a Signal{source:"onboarding"}. role+content mirrors dot.ts's history shape.
+export const OnboardingTurn = z.object({
+  role: z.enum(["user", "assistant"]),
+  content: z.string(),
+});
+export type OnboardingTurn = z.infer<typeof OnboardingTurn>;
 
 export const CriticVerdict = z.object({
   verdict: z.enum(["emit", "regen"]),

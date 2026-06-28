@@ -8,12 +8,15 @@ import { assertHeldOutCritic } from "../llm/client";
 import { ingestNode } from "../ingest/ingest";
 import { extractNode, graphNode, correctGraph, mergeGraphInputs } from "../ingest/graph";
 import { initiateGoogleConnect, getConnectionStatus } from "../ingest/composio/connect";
+import { deriveIdentityFromGmail } from "../ingest/composio/gmail";
 import { generateNode } from "../agents/generator";
 import { criticNode } from "../agents/critic";
-import { nextDotTurn, answersFromHistory, answersToCoreSignals } from "../agents/dot";
+import { introLine, dotTurn } from "../agents/dot";
+import { buildDossier } from "../agents/dossier";
+import { runConnector } from "../agents/connector";
 import { connectMap } from "../agents/connect-map";
-import { runPipeline, runIngest, runReveal, RunInput, Correction } from "../orchestrator/run";
-import { loadDossier } from "../memory/store";
+import { runPipeline, runIngest, runReveal, RunInput, Correction, currentMode } from "../orchestrator/run";
+import { loadDossier, loadCard, saveCard, listMapNodes } from "../memory/store";
 import { CardSeed, OnboardingAnswers, RelationshipGraph, Signal, WsEvent } from "../types";
 
 // Who a /run is for (userId) + about (owner). Parsed off the same body as RunInput; kept standalone
@@ -88,6 +91,54 @@ app.get("/dossier/:userId", async (c) => {
   return c.json(dossier);
 });
 
+// GET /api/map — every signed-up user as a worldmap node ({nodes:MapNode[], mode}). The keystone for
+// "see each other": after each user finishes onboarding their dossier lands here (smiley joined from
+// user_cards). Honest empty (logged) if none. mode is in the payload per the grounding law.
+app.get("/api/map", async (c) => {
+  console.log(`[pepl:seam] GET /api/map`);
+  const nodes = await listMapNodes();
+  return c.json({ nodes, mode: currentMode() });
+});
+
+// POST /reveal — the bento Dossier for one user. Loads their persisted dossier + drawn smiley, then
+// buildDossier reshapes it into 5 grounded cards (every bit a receipt, or status:"failed"). 404 if the
+// user has no persisted dossier yet; 422 if it was persisted without a story/verdict (can't ground).
+const RevealReq = z.object({ userId: z.string() });
+app.post("/reveal", async (c) => {
+  const { userId } = RevealReq.parse(await c.req.json());
+  console.log(`[pepl:seam] POST /reveal userId=${userId}`);
+  const d = await loadDossier(userId);
+  if (!d) return c.json({ error: `no dossier for user "${userId}"` }, 404);
+  if (!d.story || !d.verdict) return c.json({ error: `dossier for "${userId}" has no story/verdict` }, 422);
+  const card = await loadCard(userId);
+  const dossier = await buildDossier({
+    graph: d.graph,
+    story: d.story,
+    verdict: d.verdict,
+    signals: d.signals,
+    smiley: card?.smiley ?? null,
+    mode: currentMode(),
+  });
+  return c.json(dossier);
+});
+
+// POST /api/map/link — Knot ties two persisted nodes with a TWO-SIDED grounded story. Returns
+// {link:ConnectionStory, similarities[], mode} on a grounded link, {link:null, ...} on an honest
+// 0-overlap (never a canned rhyme), or 422 fail-CLOSED if the connector can't ground it (fabricated
+// id / >2 regens / missing node) — the same fail-loud contract the engine enforces internally.
+const MapLinkReq = z.object({ a: z.string(), b: z.string() });
+app.post("/api/map/link", async (c) => {
+  const { a, b } = MapLinkReq.parse(await c.req.json());
+  console.log(`[pepl:seam] POST /api/map/link a="${a}" b="${b}"`);
+  try {
+    return c.json(await runConnector(a, b, broadcast));
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    console.warn(`[pepl:seam] POST /api/map/link -> 422 fail-CLOSED: ${error}`);
+    return c.json({ error }, 422);
+  }
+});
+
 // POST /ingest — source -> { signals }.
 app.post("/ingest", async (c) => {
   const { source } = z.object({ source: z.string() }).parse(await c.req.json());
@@ -123,14 +174,38 @@ app.post("/api/connect/google/initiate", async (c) => {
   return c.json(await initiateGoogleConnect(userId, provider));
 });
 
-// GET /api/connect/google/status — poll whether a user's Google connection is ACTIVE.
+// GET /api/connect/google/status — poll whether a user's Google connection is ACTIVE. On the FIRST poll
+// that flips to connected (gmail), BACKGROUND-KICK the live pipeline so scrape_progress begins streaming
+// on /ws — fire-and-forget so the poll returns immediately (never blocks on the scrape).
+const kicked = new Set<string>(); // userIds whose live pipeline we've already background-started
 app.get("/api/connect/google/status", async (c) => {
   const { userId, provider } = z
     .object({ userId: z.string(), provider: z.enum(["gmail", "calendar"]) })
     .parse({ userId: c.req.query("userId"), provider: c.req.query("provider") });
   console.log(`[pepl:seam] GET /api/connect/google/status userId=${userId} provider=${provider}`);
-  return c.json(await getConnectionStatus(userId, provider));
+  const status = await getConnectionStatus(userId, provider);
+  if (status.connected && provider === "gmail" && !kicked.has(userId)) {
+    kicked.add(userId);
+    console.log(`[pepl:seam] connect flip -> background-kick live pipeline userId=${userId}`);
+    void kickLivePipeline(userId);
+  }
+  return c.json(status);
 });
+
+// The background scrape: ingest (scrape_progress) -> graph -> story -> cards (cards_ready) -> persist the
+// dossier so POST /reveal can load it. Fire-and-forget; a failure fails LOUD on the WS, never the poll.
+async function kickLivePipeline(userId: string): Promise<void> {
+  try {
+    const owner = await deriveIdentityFromGmail(userId);
+    await runPipeline({ source: `gmail:${userId}`, kind: "story" }, broadcast, { userId, owner });
+    console.log(`[pepl:seam] background pipeline done userId=${userId}`);
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    console.error(`[pepl:seam] background pipeline FAILED userId=${userId}: ${error}`);
+    broadcast({ type: "failed", node: "pipeline", error });
+    kicked.delete(userId); // allow a retry on the next poll — don't wedge the demo on one transient failure
+  }
+}
 
 // POST /generate — generate + critic; 422 (fail-CLOSED) if the judge can't ground it.
 app.post("/generate", async (c) => {
@@ -172,27 +247,39 @@ app.post("/ask", async (c) => {
   return c.json({ story, verdict });
 });
 
-// --- beat-2: Dot voice onboarding -------------------------------------------------------------
-// The browser does speech<->text; these process the transcript. A Dot message is {role, content}.
-const DotMsg = z.object({ role: z.enum(["user", "assistant"]), content: z.string() });
+// --- beat-2: Dot voice onboarding (v3 free-turn) ----------------------------------------------
+// The browser does speech<->text (Web Speech API); these process the transcript. Each user turn is
+// banked in dot.ts as a Signal{source:"onboarding"} and folded into the dossier at reveal time.
 
-// POST /api/dot/turn — advance the onboarding conversation by one Dot line.
-const DotTurnBody = z.object({ history: z.array(DotMsg), scrapeProgress: z.number().optional() });
-app.post("/api/dot/turn", async (c) => {
-  const body = DotTurnBody.parse(await c.req.json());
-  console.log(`[pepl:seam] POST /api/dot/turn history=${body.history.length} scrape=${body.scrapeProgress ?? "-"}`);
-  return c.json(await nextDotTurn(body));
+// GET /api/dot/intro — the cached opener + one seed question (instant, DEMO_CACHE). audioUrl: FE speaks it.
+app.get("/api/dot/intro", (c) => {
+  console.log(`[pepl:seam] GET /api/dot/intro`);
+  return c.json(introLine());
 });
 
-// POST /api/dot/finalize — pull the 3 answers back out of the finished transcript, then synthesize
-// CORE grounding signals from them (the literal answers + one identity-read). Beat-2 hand-off to CORE.
-const DotFinalizeBody = z.object({ history: z.array(DotMsg).min(1) });
-app.post("/api/dot/finalize", async (c) => {
-  const { history } = DotFinalizeBody.parse(await c.req.json());
-  console.log(`[pepl:seam] POST /api/dot/finalize history=${history.length}`);
-  const answers = await answersFromHistory(history);
-  const signals = await answersToCoreSignals(answers);
-  return c.json({ answers, signals });
+// POST /api/dot/turn — advance the conversation one Dot line: {transcript, reply:{text,audioUrl}, done}.
+// `text` IS the browser STT transcript; wrapUp (the FE ~25s timer) drives done — never a hidden count.
+const DotTurnReq = z.object({ userId: z.string(), text: z.string(), wrapUp: z.boolean().optional() });
+app.post("/api/dot/turn", async (c) => {
+  const body = DotTurnReq.parse(await c.req.json());
+  console.log(`[pepl:seam] POST /api/dot/turn userId=${body.userId} wrapUp=${body.wrapUp ?? false} text=${body.text.length}c`);
+  return c.json(await dotTurn(body));
+});
+
+// --- beat-3: the drawn card -------------------------------------------------------------------
+// POST /api/card — persist the node avatar + card style ({ok}). The smiley survives the scrape's
+// dossier delete+reinsert (own table) and grounds the Identity smiley bit at reveal.
+const CardReq = z.object({
+  userId: z.string(),
+  smiley: z.string().min(1),
+  smileyColors: z.unknown().optional(),
+  cardGradient: z.unknown().optional(),
+});
+app.post("/api/card", async (c) => {
+  const { userId, smiley, smileyColors, cardGradient } = CardReq.parse(await c.req.json());
+  console.log(`[pepl:seam] POST /api/card userId=${userId} smiley=${smiley.length}b`);
+  await saveCard(userId, { smiley, smileyColors, cardGradient });
+  return c.json({ ok: true });
 });
 
 // --- beat-5: thematic connect-map -------------------------------------------------------------

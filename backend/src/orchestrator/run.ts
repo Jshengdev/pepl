@@ -11,7 +11,8 @@ import { answersToSignals } from "../ingest/signalize";
 import { generateNode } from "../agents/generator";
 import { criticNode } from "../agents/critic";
 import { cardsNode } from "../agents/cards";
-import { saveDossier } from "../memory/store";
+import { buildDossier } from "../agents/dossier";
+import { saveDossier, loadCard } from "../memory/store";
 import { broadcast } from "../web/server";
 import {
   OnboardingAnswers,
@@ -21,10 +22,15 @@ import {
   type Story,
   type CriticVerdict,
   type Card,
+  type Dossier,
+  type Mode,
   type WsEvent,
 } from "../types";
 
 export const MAX_RETRIES = 2; // ≤2 regen retries, then fail-CLOSED (docs/CONTRACTS.md)
+
+/** System mode, honest in EVERY payload: a cache-corpus run is "cached", a live scrape is "live". */
+export const currentMode = (): Mode => (process.env.COMPOSIO_MODE === "cache" ? "cached" : "live");
 
 export const Correction = z.object({
   personId: z.string(),
@@ -46,6 +52,7 @@ export interface PipelineResult {
   story: Story;
   verdict: CriticVerdict;
   cards: Card[];
+  dossier: Dossier | null; // null ONLY on the stub CI path (no LLM) — an honest absence, never a fake
 }
 
 /** Who the dossier is for + about. Present => the finished dossier is written through to InsForge. */
@@ -145,7 +152,7 @@ export async function runReveal(
   args: RevealInput,
   ctx?: RunContext,
   onEvent: (e: WsEvent) => void = broadcast,
-): Promise<{ story: Story; verdict: CriticVerdict; cards: Card[] }> {
+): Promise<{ story: Story; verdict: CriticVerdict; cards: Card[]; dossier: Dossier | null }> {
   const t0 = Date.now();
   const { graph, kind, answers, cardSeed } = args;
 
@@ -174,8 +181,24 @@ export async function runReveal(
   // Write-through: persist the finished dossier to InsForge (REPLACE per user_id). Fails LOUD.
   if (ctx) await saveDossier(ctx.userId, ctx.owner, { signals, graph, story, verdict, cards, kind });
 
+  // FINAL BOUNDARY — reshape the grounded outputs into the bento Dossier (the hero reveal payload). The
+  // drawn smiley lives in its own table (saved pre-scrape via /api/card); null until drawn -> the Identity
+  // smiley bit degrades to status:"failed" (honest absence), never an empty-string default. buildDossier
+  // THROWS on any unresolvable receipt, so `step` emits failed{node:"dossier"} then rethrows — fail LOUD.
+  // The Dossier is a live-LLM boundary (synthesizes facets + asserts the held-out critic): on the stub CI
+  // path (no LLM) it is an honest null (logged), never a faked value; on the live path it always builds.
+  let dossier: Dossier | null = null;
+  if (process.env.STUB_MODE === "0") {
+    const smiley = ctx ? (await loadCard(ctx.userId))?.smiley ?? null : null;
+    dossier = await step(onEvent, "dossier", () =>
+      buildDossier({ graph, story, verdict, signals, smiley, mode: currentMode() }),
+    );
+  } else {
+    console.log("[pepl:run] dossier skipped (STUB_MODE != 0 — the bento Dossier is a live-LLM boundary)");
+  }
+
   console.log(`[pepl:run] reveal done cards=${cards.length} verdict=${verdict.verdict} (${Date.now() - t0}ms)`);
-  return { story, verdict, cards };
+  return { story, verdict, cards, dossier };
 }
 
 /** Full pipeline: runIngest THEN runReveal (correction applied between the two, as in the demo flow). */
@@ -197,12 +220,12 @@ export async function runPipeline(
     console.log(`[pepl:run] correction applied seededWrong=${graph.seededWrong.length}`);
   }
 
-  const { story, verdict, cards } = await runReveal(
+  const { story, verdict, cards, dossier } = await runReveal(
     { graph, signals, answers: input.answers, kind: input.kind },
     ctx,
     onEvent,
   );
 
   console.log(`[pepl:run] done cards=${cards.length} verdict=${verdict.verdict} (${Date.now() - t0}ms)`);
-  return { graph, story, verdict, cards };
+  return { graph, story, verdict, cards, dossier };
 }
