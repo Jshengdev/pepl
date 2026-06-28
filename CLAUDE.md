@@ -8,6 +8,17 @@ Stack: `frontend/` is a Next.js (App Router, TS, Tailwind) skeleton. `backend/` 
 
 These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
+## Context packages — read first (in order)
+
+The plan for *what* pepl is and *how* it gets built lives in [`docs/`](./docs/). Read before building:
+
+1. [`docs/README.md`](./docs/README.md) — index + the three-thread synthesis + how the build windows fit.
+2. [`docs/VISION.md`](./docs/VISION.md) — what pepl is, the demo that wins (from `gx`).
+3. [`docs/SCOPE-LOCK.md`](./docs/SCOPE-LOCK.md) — the ONE problem + crystal I/O + journey + CUT list.
+4. [`docs/CORE-PORT-PLAN.md`](./docs/CORE-PORT-PLAN.md) — the engine to port from `doubles` (~½ LOC, **no migration comments**).
+5. [`docs/LOOP-FRAMEWORK.md`](./docs/LOOP-FRAMEWORK.md) — stage gates, CP-1…CP-7, the held-out grounding judge (from `dot` + `sayhello`).
+6. [`docs/GOAL.md`](./docs/GOAL.md) — the ultracode workflow the execution-loop window runs.
+
 ---
 
 ## 0. Prime directive: the demo path is sacred
