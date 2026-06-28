@@ -85,7 +85,9 @@ function Shell({
   return (
     <div className="relative h-full w-full overflow-hidden bg-[#f3f4ea]">
       {flutes}
-      <div className="relative z-10 flex h-full w-full flex-col items-center justify-center px-[10cqw] text-center">
+      {/* pb biases the vertical centering upward → the text group sits around the
+          1/3 mark, freeing the bottom two-thirds for taller flutes. */}
+      <div className="relative z-10 flex h-full w-full flex-col items-center justify-center px-[10cqw] pb-[34cqh] text-center">
         {children}
       </div>
     </div>
@@ -137,8 +139,8 @@ function Sub({ children }: { children: ReactNode }) {
 function Title() {
   return (
     <div className="relative h-full w-full overflow-hidden bg-[#f3f4ea]">
-      <SlideFlutes start={6} lifts={VALLEY} pos="bottom" height="58%" />
-      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center pb-[5cqh]">
+      <SlideFlutes start={6} lifts={VALLEY} pos="bottom" height="64%" />
+      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center pb-[32cqh]">
         <div className="animate-fade-up flex items-center gap-[2cqw]">
           <PeplMark className="h-[8.5cqw] w-[8.5cqw]" />
           <span className="font-britti text-[11cqw] font-normal lowercase leading-none tracking-tight text-charcoal">
@@ -159,7 +161,7 @@ function Title() {
 // ── 02 — The Problem (flutes on the top) ─────────────────────────────────────
 function Problem() {
   return (
-    <Shell flutes={<SlideFlutes start={2} lifts={ARCH} pos="top" height="50%" />}>
+    <Shell flutes={<SlideFlutes start={2} lifts={ARCH} pos="top" height="34%" />}>
       <Kicker n="02">The Problem</Kicker>
       <Headline>
         Most people lack perspective on their lives because they don&rsquo;t sit

@@ -88,7 +88,7 @@ export function LandingPage() {
           areas; interactive children re-enable events. */}
       <section className="pointer-events-none relative z-10 mx-auto flex min-h-dvh w-full max-w-5xl flex-col items-center px-6 text-center">
         <h1
-          className="paint-text animate-fade-up mt-[11vh] max-w-3xl text-balance text-5xl font-semibold leading-[1.04] tracking-tight text-charcoal sm:text-6xl md:text-7xl"
+          className="paint-text animate-fade-up mt-[18vh] max-w-3xl text-balance text-5xl font-semibold leading-[1.04] tracking-tight text-charcoal sm:text-6xl md:text-7xl"
           style={{ animationDelay: "0.15s" }}
         >
           {TAGLINE}
