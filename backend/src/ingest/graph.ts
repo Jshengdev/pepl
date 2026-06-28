@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { defineNode } from "../nodes/defineNode";
 import { complete } from "../llm/client";
+import { entityHash } from "./extractors/extract-helpers";
 import { Signal, Person, Edge, RelationshipGraph } from "../types";
 
 /** ring 0 = you; 1..3 widen as closeness drops. */
@@ -140,22 +141,51 @@ export function mergeGraphInputs(
   radial: { people: Person[]; edges: Edge[] },
   lateral: { people: Person[]; edges: Edge[] },
 ): { people: Person[]; edges: Edge[] } {
+  // Union by id — radial first so its MEASURED closeness wins on an id collision.
   const byId = new Map<string, Person>();
-  for (const p of lateral.people) byId.set(p.id, p);
-  for (const p of radial.people) byId.set(p.id, p); // measured radial closeness wins
-  const people = [...byId.values()];
+  for (const p of radial.people) byId.set(p.id, p);
+  for (const p of lateral.people) if (!byId.has(p.id)) byId.set(p.id, p);
+
+  // Collapse by normalized identity (entityHash on the name): the owner reached under a second
+  // address and the extractor's own subject node both hash to the same person as the ring-0 owner,
+  // so the owner stops appearing twice (once at ring 0, once out in the rings). Keep the closest
+  // member as canonical (the owner is closeness 1), pin the lowest ring the identity was seen at,
+  // and remap every dropped id so its edges follow the survivor.
+  const groups = new Map<string, Person[]>();
+  for (const p of byId.values()) {
+    const key = entityHash("person", p.name);
+    const g = groups.get(key);
+    if (g) g.push(p);
+    else groups.set(key, [p]);
+  }
+
+  const remap = new Map<string, string>(); // droppedId -> canonicalId
+  const people: Person[] = [];
+  for (const group of groups.values()) {
+    const canon = group.reduce((m, p) => (p.closeness > m.closeness ? p : m));
+    const ring = group.reduce<0 | 1 | 2 | 3>((r, p) => (p.ring < r ? p.ring : r), canon.ring);
+    for (const p of group) if (p.id !== canon.id) remap.set(p.id, canon.id);
+    people.push(ring === canon.ring ? canon : { ...canon, ring });
+  }
 
   const seen = new Set<string>();
   const edges: Edge[] = [];
+  let selfDropped = 0;
   for (const e of [...radial.edges, ...lateral.edges]) {
-    const key = `${e.from}|${e.to}`;
+    const from = remap.get(e.from) ?? e.from;
+    const to = remap.get(e.to) ?? e.to;
+    if (from === to) {
+      selfDropped++; // a tie that collapsed onto its own identity (owner↔owner) — drop, don't self-loop
+      continue;
+    }
+    const key = `${from}|${to}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    edges.push(e);
+    edges.push(from === e.from && to === e.to ? e : { ...e, from, to });
   }
 
   console.log(
-    `[pepl:node:graph] merge radial(people=${radial.people.length},edges=${radial.edges.length}) + lateral(people=${lateral.people.length},edges=${lateral.edges.length}) -> people=${people.length} edges=${edges.length}`,
+    `[pepl:node:graph] merge radial(people=${radial.people.length},edges=${radial.edges.length}) + lateral(people=${lateral.people.length},edges=${lateral.edges.length}) -> people=${people.length} edges=${edges.length} merged=${remap.size} selfDropped=${selfDropped}`,
   );
   return { people, edges };
 }

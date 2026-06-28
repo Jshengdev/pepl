@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { defineNode } from "../nodes/defineNode";
 import { complete } from "../llm/client";
-import { Card, RelationshipGraph, Story } from "../types";
+import { Card, CardSeed, Person, RelationshipGraph, Story } from "../types";
 
 const Copy = z.object({
   oneLiner: z.string(),
@@ -12,27 +12,45 @@ const Copy = z.object({
   mbtiWhy: z.string(),
 });
 
+// CARD-SEED (beat 3): identity is always the ring-0 node; the user's own one-liner/mark/gradient
+// (if they set them) take precedence over the generated copy.
+function profileCard(
+  me: Person,
+  oneLiner: string,
+  facts: string[],
+  seed?: z.infer<typeof CardSeed>,
+): z.input<typeof Card> {
+  return {
+    kind: "profile",
+    name: me.name, // node identity = ring 0
+    oneLiner: seed?.oneLiner ?? oneLiner,
+    facts,
+    ...(seed?.mark ? { mark: seed.mark } : {}),
+    ...(seed?.gradient ? { gradient: seed.gradient } : {}),
+    back: { label: "Who is this?" },
+  };
+}
+
 export const cardsNode = defineNode({
   name: "cards",
-  in: z.object({ graph: RelationshipGraph, story: Story }),
+  in: z.object({ graph: RelationshipGraph, story: Story, cardSeed: CardSeed.optional() }),
   out: z.object({ cards: z.array(Card) }),
   // pepl: S1 stub — S2 fills the live path
-  stub: ({ graph, story }) => {
+  stub: ({ graph, story, cardSeed }) => {
     const me = graph.people.find((p) => p.ring === 0);
     if (!me) throw new Error("[pepl:node:cards] no ring-0 person in graph");
 
     const cards: z.input<typeof Card>[] = [
-      {
-        kind: "profile",
-        name: me.name,
-        oneLiner: "Builder at the center of a small, dense network.",
-        facts: [
+      profileCard(
+        me,
+        "Builder at the center of a small, dense network.",
+        [
           `Closeness score ${me.closeness.toFixed(2)}`,
           `${graph.people.length - 1} people in orbit`,
           `${graph.edges.length} mapped relationships`,
         ],
-        back: { label: "Who is this?" },
-      },
+        cardSeed,
+      ),
       {
         kind: "wow",
         headline: `${graph.edges.length} connections, one source.`,
@@ -60,7 +78,7 @@ export const cardsNode = defineNode({
     return { cards };
   },
 
-  live: async ({ graph, story }) => {
+  live: async ({ graph, story, cardSeed }) => {
     const me = graph.people.find((p) => p.ring === 0);
     if (!me) throw new Error("[pepl:node:cards] no ring-0 person in graph");
 
@@ -120,13 +138,7 @@ export const cardsNode = defineNode({
     );
 
     const cards: z.input<typeof Card>[] = [
-      {
-        kind: "profile",
-        name: me.name,
-        oneLiner: copy.oneLiner,
-        facts: copy.profileFacts,
-        back: { label: "Who is this?" },
-      },
+      profileCard(me, copy.oneLiner, copy.profileFacts, cardSeed),
       {
         kind: "wow",
         headline: copy.wowHeadline,

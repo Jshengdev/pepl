@@ -21,21 +21,31 @@ Hard grounding contract:
 Output ONLY a JSON object: { "text": string, "groundedIn": [{ "claim": string, "signalId": string }] }`;
 
 function buildPrompt(input: z.infer<typeof GenerateIn>): string {
-  const corpus = input.signals.map((s) => `[${s.id}] ${s.text}`).join("\n");
+  // ANSWERS-AS-CORE-GROUNDING: the onboarding signals (source:"onboarding") are the subject's own
+  // words about WHO THEY ARE — ground the piece in those FIRST, then enrich with everything else.
+  const onboarding = input.signals.filter((s) => s.source === "onboarding");
+  const rest = input.signals.filter((s) => s.source !== "onboarding");
+  const fmt = (ss: typeof input.signals): string => ss.map((s) => `[${s.id}] ${s.text}`).join("\n");
   const orbit = input.graph.people.map((p) => `${p.name} (ring ${p.ring})`).join(", ");
   const ask =
     input.kind === "story"
       ? "Write a first-person STORY — the subject reading their own life back as a narrative arc (~150-220 words)."
       : "Write a first-person BIO — the subject introducing themselves (~120-180 words).";
-  const answersBlock = input.answers
-    ? `\n\nOnboarding answers (also grounded — but you may only cite signal ids, so weave these in only where a signal backs them):\n- turning point: ${input.answers.turningPoint}\n- unique strength: ${input.answers.uniqueStrength}\n- friend note: ${input.answers.friendNote}`
-    : "";
+
+  const primaryBlock = onboarding.length
+    ? `PRIMARY GROUNDING — how the subject answered "who am I" (this is the CORE of who they are; build the spine of the piece HERE FIRST, then enrich; cite these ids):
+${fmt(onboarding)}
+
+ENRICHMENT SIGNALS (Gmail / calendar / footprint — add specific, true detail AROUND the primary grounding; cite by id):
+${fmt(rest)}`
+    : `SIGNALS (cite by id):
+${fmt(rest)}`;
+
   return `${ask}
 
 People in the subject's orbit (context only — ground content in the signals, not this list): ${orbit || "(none surfaced)"}
 
-SIGNALS (cite by id):
-${corpus}${answersBlock}
+${primaryBlock}
 
 Return the JSON object now. Every entry in groundedIn must use one of the signal ids above.`;
 }

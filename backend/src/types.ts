@@ -48,9 +48,19 @@ export const ProfileCard = z.object({
   name: z.string(),
   oneLiner: z.string(),
   facts: z.array(z.string()),
+  mark: z.string().optional(),
+  gradient: z.string().optional(),
   back: Back,
 });
 export type ProfileCard = z.infer<typeof ProfileCard>;
+
+// The user's beat-3 choices, folded into the ProfileCard (their own one-liner/mark win over LLM copy).
+export const CardSeed = z.object({
+  oneLiner: z.string().optional(),
+  mark: z.string().optional(),
+  gradient: z.string().optional(),
+});
+export type CardSeed = z.infer<typeof CardSeed>;
 
 export const WowCard = z.object({
   kind: z.literal("wow"),

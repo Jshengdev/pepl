@@ -1,9 +1,14 @@
 import type { RawEmail } from "../composio/gmail";
 import { complete } from "../../llm/client";
 
-// Local-part patterns that are unmistakably automated — dropped without asking the model.
+// Local-part patterns that are unmistakably automated/transactional — dropped without asking the model.
 const AUTOMATED_LOCAL =
-  /^(no-?reply|do-?not-?reply|donotreply|notifications?|notify|mailer(-daemon)?|postmaster|bounce[ds]?|auto-?(reply|confirm)|alerts?)$/i;
+  /^(no-?reply|do-?not-?reply|donotreply|notifications?|notify|mailer(-daemon)?|postmaster|bounce[ds]?|auto-?(reply|confirm)|alerts?|support|team|hello|updates|via)$/i;
+
+// Display names that announce a service: "<Name> on Facebook", "<Name> from Devpost", "<Name> via Slack".
+// A real person's display name is "First Last" — a notifier puts the service after an on/from/via connector.
+// These were the leak that slipped to ring 3 ("Monica on Facebook", "Darlyze from Devpost", "Jane on Third").
+const NOTIFICATION_DISPLAY = /\S+\s+(?:on|from|via)\s+\S/i;
 
 // "USC" <anything@usc.edu>, "Handshake" <…@handshake.com>, "a16z" <…@a16z.com>:
 // when the display name is literally inside the email's domain, the sender is the
@@ -49,6 +54,7 @@ export async function classifyHumanSenders(emails: RawEmail[]): Promise<RawEmail
   const ambiguous: Sender[] = [];
   let autoDropped = 0;
   let brandDropped = 0;
+  let notifDropped = 0;
   const humanEmails = new Set<string>();
   for (const s of senders.values()) {
     const local = s.email.split("@")[0] ?? "";
@@ -58,6 +64,10 @@ export async function classifyHumanSenders(emails: RawEmail[]): Promise<RawEmail
     }
     if (displayNameInDomain(s.name, s.domain)) {
       brandDropped++;
+      continue;
+    }
+    if (NOTIFICATION_DISPLAY.test(s.name)) {
+      notifDropped++;
       continue;
     }
     ambiguous.push(s);
@@ -81,7 +91,7 @@ export async function classifyHumanSenders(emails: RawEmail[]): Promise<RawEmail
 
   const kept = emails.filter((e) => humanEmails.has(e.fromEmail));
   console.log(
-    `[pepl:ingest:sender-classifier] senders=${senders.size} autoDropped=${autoDropped} brandDropped=${brandDropped} ambiguous=${ambiguous.length} humans=${humanEmails.size} emailsKept=${kept.length}/${emails.length} (${Date.now() - t0}ms)`,
+    `[pepl:ingest:sender-classifier] senders=${senders.size} autoDropped=${autoDropped} brandDropped=${brandDropped} notifDropped=${notifDropped} ambiguous=${ambiguous.length} humans=${humanEmails.size} emailsKept=${kept.length}/${emails.length} (${Date.now() - t0}ms)`,
   );
   return kept;
 }

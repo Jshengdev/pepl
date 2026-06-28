@@ -10,9 +10,11 @@ import { extractNode, graphNode, correctGraph, mergeGraphInputs } from "../inges
 import { initiateGoogleConnect, getConnectionStatus } from "../ingest/composio/connect";
 import { generateNode } from "../agents/generator";
 import { criticNode } from "../agents/critic";
-import { runPipeline, RunInput, Correction } from "../orchestrator/run";
+import { nextDotTurn, answersFromHistory, answersToCoreSignals } from "../agents/dot";
+import { connectMap } from "../agents/connect-map";
+import { runPipeline, runIngest, runReveal, RunInput, Correction } from "../orchestrator/run";
 import { loadDossier } from "../memory/store";
-import { OnboardingAnswers, RelationshipGraph, Signal, WsEvent } from "../types";
+import { CardSeed, OnboardingAnswers, RelationshipGraph, Signal, WsEvent } from "../types";
 
 // Who a /run is for (userId) + about (owner). Parsed off the same body as RunInput; kept standalone
 // (not RunInput.extend) so this module never touches run.ts's bindings at import time — server.ts and
@@ -50,6 +52,31 @@ app.post("/run", async (c) => {
   const ctx = body.userId && body.owner ? PersistCtx.parse(body) : undefined;
   console.log(`[pepl:seam] POST /run source="${input.source}" kind=${input.kind} user=${ctx?.userId ?? "(ephemeral)"}`);
   return c.json(await runPipeline(input, broadcast, ctx));
+});
+
+// POST /run/ingest — beat 1 only: source -> { graph, signals } (the reveal comes later).
+app.post("/run/ingest", async (c) => {
+  const body = await c.req.json();
+  const input = RunInput.parse(body);
+  const ctx = body.userId && body.owner ? PersistCtx.parse(body) : undefined;
+  console.log(`[pepl:seam] POST /run/ingest source="${input.source}" user=${ctx?.userId ?? "(ephemeral)"}`);
+  return c.json(await runIngest(input, ctx, broadcast));
+});
+
+// POST /run/reveal — beat 4: { graph, signals, kind, answers?, cardSeed? } -> { story, verdict, cards }.
+const RevealBody = z.object({
+  graph: RelationshipGraph,
+  signals: z.array(Signal),
+  kind: z.enum(["bio", "story"]),
+  answers: OnboardingAnswers.optional(),
+  cardSeed: CardSeed.optional(),
+});
+app.post("/run/reveal", async (c) => {
+  const body = await c.req.json();
+  const args = RevealBody.parse(body);
+  const ctx = body.userId && body.owner ? PersistCtx.parse(body) : undefined;
+  console.log(`[pepl:seam] POST /run/reveal kind=${args.kind} signals=${args.signals.length} user=${ctx?.userId ?? "(ephemeral)"}`);
+  return c.json(await runReveal(args, ctx, broadcast));
 });
 
 // GET /dossier/:userId — rehydrate a saved dossier (refresh). 404 honest-absence if none.
@@ -143,6 +170,38 @@ app.post("/ask", async (c) => {
     return c.json({ error: verdict.failReason, verdict }, 422);
   }
   return c.json({ story, verdict });
+});
+
+// --- beat-2: Dot voice onboarding -------------------------------------------------------------
+// The browser does speech<->text; these process the transcript. A Dot message is {role, content}.
+const DotMsg = z.object({ role: z.enum(["user", "assistant"]), content: z.string() });
+
+// POST /api/dot/turn — advance the onboarding conversation by one Dot line.
+const DotTurnBody = z.object({ history: z.array(DotMsg), scrapeProgress: z.number().optional() });
+app.post("/api/dot/turn", async (c) => {
+  const body = DotTurnBody.parse(await c.req.json());
+  console.log(`[pepl:seam] POST /api/dot/turn history=${body.history.length} scrape=${body.scrapeProgress ?? "-"}`);
+  return c.json(await nextDotTurn(body));
+});
+
+// POST /api/dot/finalize — pull the 3 answers back out of the finished transcript, then synthesize
+// CORE grounding signals from them (the literal answers + one identity-read). Beat-2 hand-off to CORE.
+const DotFinalizeBody = z.object({ history: z.array(DotMsg).min(1) });
+app.post("/api/dot/finalize", async (c) => {
+  const { history } = DotFinalizeBody.parse(await c.req.json());
+  console.log(`[pepl:seam] POST /api/dot/finalize history=${history.length}`);
+  const answers = await answersFromHistory(history);
+  const signals = await answersToCoreSignals(answers);
+  return c.json({ answers, signals });
+});
+
+// --- beat-5: thematic connect-map -------------------------------------------------------------
+// POST /api/connect-map — score how alike a set of users are AS PEOPLE (every distinct pair).
+const ConnectMapBody = z.object({ userIds: z.array(z.string()).min(2) });
+app.post("/api/connect-map", async (c) => {
+  const { userIds } = ConnectMapBody.parse(await c.req.json());
+  console.log(`[pepl:seam] POST /api/connect-map users=[${userIds.join(", ")}]`);
+  return c.json(await connectMap(userIds));
 });
 
 app.get(

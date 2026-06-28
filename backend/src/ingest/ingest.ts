@@ -106,7 +106,10 @@ async function liveIngest(
 
   const [gmail, calendar, footprint, onboarding] = await Promise.all([
     soft("gmail", async () => {
-      const emails = await pullGmailMessages(userId, { lookbackDays });
+      // pepl: demo latency cap — the Gmail pagination dominates a live run. maxPages 6 (~150 msgs in the
+      // 90d window) keeps the whole run ~<2min, and the scrape is masked by the reveal beats anyway.
+      // Ceiling: only the most recent ~150 messages; upgrade path: raise maxPages or paginate in the bg.
+      const emails = await pullGmailMessages(userId, { lookbackDays, maxPages: 6 });
       const humans = await classifyHumanSenders(emails);
       return { signals: emailsToSignals(humans), ...peopleFromEmails(humans, { email: identity.email }) };
     }),
@@ -175,6 +178,6 @@ export const ingestNode = defineNode({
       throw new Error(
         `[pepl:node:ingest] COMPOSIO_MODE=live but COMPOSIO_API_KEY missing — set the key or COMPOSIO_MODE=cache (never silently falling back to the cache)`,
       );
-    return liveIngest(uid, lookbackDays ?? 180, answers);
+    return liveIngest(uid, lookbackDays ?? 90, answers); // pepl: 90d default — demo latency cap (see liveIngest gmail)
   },
 });

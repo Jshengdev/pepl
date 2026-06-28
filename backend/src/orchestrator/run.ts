@@ -7,6 +7,7 @@
 import { z } from "zod";
 import { ingestNode } from "../ingest/ingest";
 import { extractNode, graphNode, correctGraph, mergeGraphInputs } from "../ingest/graph";
+import { answersToSignals } from "../ingest/signalize";
 import { generateNode } from "../agents/generator";
 import { criticNode } from "../agents/critic";
 import { cardsNode } from "../agents/cards";
@@ -14,6 +15,8 @@ import { saveDossier } from "../memory/store";
 import { broadcast } from "../web/server";
 import {
   OnboardingAnswers,
+  CardSeed,
+  type Signal,
   type RelationshipGraph,
   type Story,
   type CriticVerdict,
@@ -82,6 +85,100 @@ export async function regenToGrounded(
   return { story, verdict };
 }
 
+// Wrap a stage: node_start -> run -> node_done(ms). On throw, emit `failed` THEN rethrow — never swallow.
+async function step<T>(onEvent: (e: WsEvent) => void, node: string, fn: () => Promise<T>): Promise<T> {
+  onEvent({ type: "node_start", node });
+  const tn = Date.now();
+  try {
+    const out = await fn();
+    onEvent({ type: "node_done", node, ms: Date.now() - tn });
+    return out;
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    onEvent({ type: "failed", node, error });
+    throw err;
+  }
+}
+
+/** What a reveal needs from the preceding ingest, plus the user's beat-2/beat-3 inputs. */
+export interface RevealInput {
+  graph: RelationshipGraph;
+  signals: Signal[];
+  kind: "bio" | "story";
+  answers?: z.infer<typeof OnboardingAnswers>;
+  cardSeed?: z.infer<typeof CardSeed>;
+}
+
+/**
+ * BEAT 1 — ingest -> extract -> graph. Streams scrape_progress + node_start/node_done, returns the
+ * reconstructed graph and the raw signal corpus so the reveal can ground in them. No story yet.
+ */
+export async function runIngest(
+  input: RunInput,
+  ctx?: RunContext,
+  onEvent: (e: WsEvent) => void = broadcast,
+): Promise<{ graph: RelationshipGraph; signals: Signal[] }> {
+  const t0 = Date.now();
+  console.log(`[pepl:run] ingest start source="${input.source}" user=${ctx?.userId ?? "(ephemeral)"}`);
+
+  const { signals, people: radialPeople, edges: radialEdges } = await step(onEvent, "ingest", async () => {
+    onEvent({ type: "scrape_progress", pct: 33, etaSec: 2 });
+    onEvent({ type: "scrape_progress", pct: 80, etaSec: 1 });
+    return ingestNode({ source: input.source, userId: ctx?.userId, answers: input.answers });
+  });
+
+  const lateral = await step(onEvent, "extract", () => extractNode({ signals }));
+  const merged = mergeGraphInputs({ people: radialPeople, edges: radialEdges }, lateral);
+  const graph = await step(onEvent, "graph", () => graphNode(merged));
+
+  console.log(
+    `[pepl:run] ingest done people=${graph.people.length} edges=${graph.edges.length} signals=${signals.length} (${Date.now() - t0}ms)`,
+  );
+  return { graph, signals };
+}
+
+/**
+ * BEAT 4 — generate -> critic (≤2-retry regen loop) -> cards -> saveDossier. Grounds the story in the
+ * corpus from runIngest; if the user answered onboarding, those answers fold in as the PRIMARY grounding.
+ */
+export async function runReveal(
+  args: RevealInput,
+  ctx?: RunContext,
+  onEvent: (e: WsEvent) => void = broadcast,
+): Promise<{ story: Story; verdict: CriticVerdict; cards: Card[] }> {
+  const t0 = Date.now();
+  const { graph, kind, answers, cardSeed } = args;
+
+  // ANSWERS-AS-CORE-GROUNDING: fold the onboarding answers into the corpus as citable signals
+  // (source:"onboarding") so the story grounds in HOW THE USER ANSWERED first, then in Gmail/footprint.
+  // Dedupe by id so the full-pipeline path (ingest already added them) never doubles them.
+  const have = new Set(args.signals.map((s) => s.id));
+  const onboarding = answers ? answersToSignals(answers).filter((s) => !have.has(s.id)) : [];
+  const signals = onboarding.length ? [...args.signals, ...onboarding] : args.signals;
+  if (onboarding.length)
+    console.log(`[pepl:run] reveal +${onboarding.length} onboarding signal(s) as primary grounding`);
+
+  const initialStory = await step(onEvent, "generate", () => generateNode({ graph, signals, answers, kind }));
+  const initialVerdict = await step(onEvent, "critic", () => criticNode({ output: initialStory, signals }));
+
+  const { story, verdict } = await regenToGrounded(
+    { story: initialStory, verdict: initialVerdict },
+    () => step(onEvent, "generate", () => generateNode({ graph, signals, answers, kind })),
+    (draft) => step(onEvent, "critic", () => criticNode({ output: draft, signals })),
+    onEvent,
+  );
+
+  const { cards } = await step(onEvent, "cards", () => cardsNode({ graph, story, cardSeed }));
+  onEvent({ type: "cards_ready", cards });
+
+  // Write-through: persist the finished dossier to InsForge (REPLACE per user_id). Fails LOUD.
+  if (ctx) await saveDossier(ctx.userId, ctx.owner, { signals, graph, story, verdict, cards, kind });
+
+  console.log(`[pepl:run] reveal done cards=${cards.length} verdict=${verdict.verdict} (${Date.now() - t0}ms)`);
+  return { story, verdict, cards };
+}
+
+/** Full pipeline: runIngest THEN runReveal (correction applied between the two, as in the demo flow). */
 export async function runPipeline(
   input: RunInput,
   onEvent: (e: WsEvent) => void = broadcast,
@@ -92,56 +189,20 @@ export async function runPipeline(
     `[pepl:run] start source="${input.source}" kind=${input.kind}${input.correction ? " +correction" : ""}`,
   );
 
-  // Wrap a stage: node_start -> run -> node_done(ms). On throw, emit `failed` THEN rethrow — never swallow.
-  async function step<T>(node: string, fn: () => Promise<T>): Promise<T> {
-    onEvent({ type: "node_start", node });
-    const tn = Date.now();
-    try {
-      const out = await fn();
-      onEvent({ type: "node_done", node, ms: Date.now() - tn });
-      return out;
-    } catch (err) {
-      const error = err instanceof Error ? err.message : String(err);
-      onEvent({ type: "failed", node, error });
-      throw err;
-    }
-  }
-
-  const { signals, people: radialPeople, edges: radialEdges } = await step("ingest", async () => {
-    onEvent({ type: "scrape_progress", pct: 33, etaSec: 2 });
-    onEvent({ type: "scrape_progress", pct: 80, etaSec: 1 });
-    return ingestNode({ source: input.source, userId: ctx?.userId, answers: input.answers });
-  });
-
-  const lateral = await step("extract", () => extractNode({ signals }));
-  const merged = mergeGraphInputs({ people: radialPeople, edges: radialEdges }, lateral);
-  let graph = await step("graph", () => graphNode(merged));
-
+  const ingested = await runIngest(input, ctx, onEvent);
+  const { signals } = ingested;
+  let graph = ingested.graph;
   if (input.correction) {
     graph = correctGraph(graph, input.correction);
     console.log(`[pepl:run] correction applied seededWrong=${graph.seededWrong.length}`);
   }
 
-  const initialStory = await step("generate", () =>
-    generateNode({ graph, signals, answers: input.answers, kind: input.kind }),
-  );
-  const initialVerdict = await step("critic", () => criticNode({ output: initialStory, signals }));
-
-  const { story, verdict } = await regenToGrounded(
-    { story: initialStory, verdict: initialVerdict },
-    () => step("generate", () => generateNode({ graph, signals, answers: input.answers, kind: input.kind })),
-    (draft) => step("critic", () => criticNode({ output: draft, signals })),
+  const { story, verdict, cards } = await runReveal(
+    { graph, signals, answers: input.answers, kind: input.kind },
+    ctx,
     onEvent,
   );
 
-  const { cards } = await step("cards", () => cardsNode({ graph, story }));
-  onEvent({ type: "cards_ready", cards });
-
-  // Write-through: persist the finished dossier to InsForge (REPLACE per user_id). Fails LOUD.
-  if (ctx) await saveDossier(ctx.userId, ctx.owner, { signals, graph, story, verdict, cards, kind: input.kind });
-
-  console.log(
-    `[pepl:run] done cards=${cards.length} verdict=${verdict.verdict} (${Date.now() - t0}ms)`,
-  );
+  console.log(`[pepl:run] done cards=${cards.length} verdict=${verdict.verdict} (${Date.now() - t0}ms)`);
   return { graph, story, verdict, cards };
 }
