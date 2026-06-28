@@ -20,9 +20,38 @@ The generator and the critic MUST be **different model families**, or the critic
 
 ## Env keys (the build adds these to `backend/.env` + documents in `.env.example`)
 
-- `INSFORGE_API_KEY` — gateway + db + auth (not set yet; flip at S4)
+- `INSFORGE_URL` + `INSFORGE_ANON_KEY` + `INSFORGE_API_KEY` (admin, server-only) — db + auth + model gateway + hosting (set at the flip; see InsForge wiring). Frontend mirrors `NEXT_PUBLIC_INSFORGE_URL` / `NEXT_PUBLIC_INSFORGE_ANON_KEY`.
 - `YDC_API_KEY` — You.com Research/Search. **Set in `backend/.env` + validated live (200, returns cited sources).**
 - `OPENROUTER_API_KEY` / `CEREBRAS_API_KEY` / `XAI_API_KEY` — already in `backend/.env` (build is on the OpenRouter fallback until the InsForge gateway is wired; XAI = Grok for voice).
+
+## InsForge — wiring (db + auth + model gateway + deploy)
+
+One platform = the **$500 prize** + most of pepl's infra. Install its Claude Code skills for native help: repo `github.com/InsForge/insforge-skills` (skills `insforge` = app SDK, `insforge-cli` = infra/deploy, `insforge-debug`). Setup is CLI-first; **the build stays on the OpenRouter fallback until the flip.**
+
+**Setup (CLI, needs a one-time `npx @insforge/cli login`):**
+```bash
+npx @insforge/cli create        # or: link  → writes .insforge/project.json (oss_host = your URL)
+npx @insforge/cli secrets get ANON_KEY
+```
+Env — `backend/.env` (server) + `frontend/.env.local` (client):
+- `INSFORGE_URL` (the `oss_host`, e.g. `https://<project>.insforge.app`) + `NEXT_PUBLIC_INSFORGE_URL`
+- `INSFORGE_ANON_KEY` + `NEXT_PUBLIC_INSFORGE_ANON_KEY` (user-scoped client)
+- `INSFORGE_API_KEY` (admin/service — **server-only**)
+
+**Model gateway (OpenAI-compatible, OpenRouter-backed → trivial flip).** `POST https://<project>.insforge.dev/v1/chat/completions`, header `Authorization: Bearer <key>`, OpenAI-shaped body with `model` slugs like `anthropic/claude-3-5-sonnet` (generator) + a non-Anthropic slug e.g. `qwen/qwen-2.5-72b-instruct` (critic — **held-out family**). Slugs match OpenRouter, so flipping = swap base URL + key in `llm/client.ts` (`LLM_PROVIDER=insforge`). SSE streaming supported. (The SDK's `insforge.ai.*` is a deprecated fallback — call the gateway endpoint directly.)
+
+**Auth — Google SSO (the landing CTA):**
+```ts
+import { createClient } from '@insforge/sdk'
+const insforge = createClient({ baseUrl: NEXT_PUBLIC_INSFORGE_URL, anonKey: NEXT_PUBLIC_INSFORGE_ANON_KEY })
+await insforge.auth.signInWithOAuth('google', { redirectTo: '<app callback>' }) // PKCE, auto in SPA
+const { data } = await insforge.auth.getCurrentUser()                           // on load
+```
+Enable the Google provider + add the redirect URL via dashboard/CLI (`config apply`, `allowedRedirectUrls`). All methods return `{ data, error }`.
+
+**Database (if we persist past in-memory):** `insforge.database.from('people').insert([{…}])` / `.select()` / `.update()` / `.delete()` (inserts must be arrays); server admin via `createAdminClient({ baseUrl, apiKey })`. pgvector is available for semantic recall.
+
+**Deploy (S4):** `npx @insforge/cli deploy` (sites/compute); `vercel.json` if the Next.js app deploys as an SPA elsewhere. Always local-build before deploy.
 
 ## You.com (grounding/enrichment) — wiring
 
