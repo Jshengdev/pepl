@@ -11,7 +11,13 @@ import { initiateGoogleConnect, getConnectionStatus } from "../ingest/composio/c
 import { generateNode } from "../agents/generator";
 import { criticNode } from "../agents/critic";
 import { runPipeline, RunInput, Correction } from "../orchestrator/run";
+import { loadDossier } from "../memory/store";
 import { OnboardingAnswers, RelationshipGraph, Signal, WsEvent } from "../types";
+
+// Who a /run is for (userId) + about (owner). Parsed off the same body as RunInput; kept standalone
+// (not RunInput.extend) so this module never touches run.ts's bindings at import time — server.ts and
+// run.ts form an import cycle that only resolves because each uses the other lazily, inside handlers.
+const PersistCtx = z.object({ userId: z.string(), owner: z.object({ name: z.string(), email: z.string() }) });
 
 export const app = new Hono();
 const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
@@ -39,9 +45,20 @@ app.get("/health", (c) => c.json({ ok: true, service: "pepl-backend" }));
 
 // POST /run — full pipeline; events stream to /ws via the default broadcast onEvent.
 app.post("/run", async (c) => {
-  const input = RunInput.parse(await c.req.json());
-  console.log(`[pepl:seam] POST /run source="${input.source}" kind=${input.kind}`);
-  return c.json(await runPipeline(input));
+  const body = await c.req.json();
+  const input = RunInput.parse(body);
+  const ctx = body.userId && body.owner ? PersistCtx.parse(body) : undefined;
+  console.log(`[pepl:seam] POST /run source="${input.source}" kind=${input.kind} user=${ctx?.userId ?? "(ephemeral)"}`);
+  return c.json(await runPipeline(input, broadcast, ctx));
+});
+
+// GET /dossier/:userId — rehydrate a saved dossier (refresh). 404 honest-absence if none.
+app.get("/dossier/:userId", async (c) => {
+  const userId = c.req.param("userId");
+  console.log(`[pepl:seam] GET /dossier/${userId}`);
+  const dossier = await loadDossier(userId);
+  if (!dossier) return c.json({ error: `no dossier for user "${userId}"` }, 404);
+  return c.json(dossier);
 });
 
 // POST /ingest — source -> { signals }.

@@ -10,6 +10,7 @@ import { extractNode, graphNode, correctGraph, mergeGraphInputs } from "../inges
 import { generateNode } from "../agents/generator";
 import { criticNode } from "../agents/critic";
 import { cardsNode } from "../agents/cards";
+import { saveDossier } from "../memory/store";
 import { broadcast } from "../web/server";
 import {
   OnboardingAnswers,
@@ -42,6 +43,12 @@ export interface PipelineResult {
   story: Story;
   verdict: CriticVerdict;
   cards: Card[];
+}
+
+/** Who the dossier is for + about. Present => the finished dossier is written through to InsForge. */
+export interface RunContext {
+  userId: string;
+  owner: { name: string; email: string };
 }
 
 /**
@@ -78,6 +85,7 @@ export async function regenToGrounded(
 export async function runPipeline(
   input: RunInput,
   onEvent: (e: WsEvent) => void = broadcast,
+  ctx?: RunContext,
 ): Promise<PipelineResult> {
   const t0 = Date.now();
   console.log(
@@ -102,7 +110,7 @@ export async function runPipeline(
   const { signals, people: radialPeople, edges: radialEdges } = await step("ingest", async () => {
     onEvent({ type: "scrape_progress", pct: 33, etaSec: 2 });
     onEvent({ type: "scrape_progress", pct: 80, etaSec: 1 });
-    return ingestNode({ source: input.source, answers: input.answers });
+    return ingestNode({ source: input.source, userId: ctx?.userId, answers: input.answers });
   });
 
   const lateral = await step("extract", () => extractNode({ signals }));
@@ -128,6 +136,9 @@ export async function runPipeline(
 
   const { cards } = await step("cards", () => cardsNode({ graph, story }));
   onEvent({ type: "cards_ready", cards });
+
+  // Write-through: persist the finished dossier to InsForge (REPLACE per user_id). Fails LOUD.
+  if (ctx) await saveDossier(ctx.userId, ctx.owner, { signals, graph, story, verdict, cards, kind: input.kind });
 
   console.log(
     `[pepl:run] done cards=${cards.length} verdict=${verdict.verdict} (${Date.now() - t0}ms)`,

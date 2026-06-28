@@ -35,6 +35,20 @@ export function modelFamily(slug: string): string {
 }
 
 /**
+ * Resolve the API key for a provider. For openrouter we PREFER the InsForge-provisioned gateway key
+ * (INSFORGE_OPENROUTER_API_KEY) so every model call bills to InsForge credits, falling back to a direct
+ * OPENROUTER_API_KEY. Held-out family logic is unchanged — only the key (and who it bills) differs.
+ */
+function resolveKey(p: string, keyEnv: string): { key: string | undefined; source: string } {
+  if (p === "openrouter") {
+    const gateway = process.env.INSFORGE_OPENROUTER_API_KEY;
+    if (gateway) return { key: gateway, source: "INSFORGE_OPENROUTER_API_KEY (InsForge gateway)" };
+    return { key: process.env.OPENROUTER_API_KEY, source: "OPENROUTER_API_KEY (direct)" };
+  }
+  return { key: process.env[keyEnv], source: keyEnv };
+}
+
+/**
  * Fail CLOSED if the active provider's generator and critic share a family.
  * Called at boot and (later) per critic call. Throws on unfilled slugs too,
  * so booting on insforge before S2 fills the registry fails loudly.
@@ -58,6 +72,10 @@ export function assertHeldOutCritic(): void {
     );
   }
   console.log(`[pepl:llm] held-out assert -> generator=${gen} (${genFam}) != critic=${crit} (${critFam}) -> ok`);
+
+  // Log which gateway key is active at boot — proves model calls route through InsForge credits.
+  const { key, source } = resolveKey(p, ENDPOINTS[p]?.keyEnv ?? "");
+  console.log(`[pepl:llm] gateway key for "${p}" -> ${source}${key ? " (present)" : " (MISSING — calls will fail loud)"}`);
 }
 
 export interface CompleteOptions {
@@ -85,8 +103,8 @@ export async function complete(opts: CompleteOptions): Promise<string> {
   const model = models[opts.tier];
   if (!model) throw new Error(`[pepl:llm] provider "${p}" has no slug for tier ${opts.tier} — fill from docs.insforge.dev at S2`);
   if (!ep.baseUrl) throw new Error(`[pepl:llm] provider "${p}" base URL not set — fill from docs.insforge.dev at S2`);
-  const key = process.env[ep.keyEnv];
-  if (!key) throw new Error(`[pepl:llm] ${ep.keyEnv} is required for provider "${p}" (read from backend/.env) — refusing to call ${model}`);
+  const { key, source } = resolveKey(p, ep.keyEnv);
+  if (!key) throw new Error(`[pepl:llm] no API key for provider "${p}" (tried ${source}, read from backend/.env) — refusing to call ${model}`);
 
   const t0 = Date.now();
   const res = await fetch(`${ep.baseUrl}/chat/completions`, {
