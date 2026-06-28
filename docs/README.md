@@ -24,9 +24,13 @@ The fit is tight:
 
 ## The window architecture
 
-- **This window (context loading) — done.** Scaffolded the repo (Next.js `frontend/` + Hono `backend/`), ported the working-style CLAUDE.md, wrote these context packages.
-- **Execution loop window.** Runs [GOAL.md](./GOAL.md) as an ultracode workflow: picks up the locked scope + contracts, builds the core engine + demo path stage by stage (S0–S4), and self-validates against the held-out judge until the stop condition is green.
-- **Story / E2E experience window.** Builds out the experience, design, and narrative; feeds refined context + integration packages back into `docs/` for the loop to pick up.
+pepl is built across **three windows**, each its own mission-control. Full briefs in [`windows/`](./windows/):
+
+- **Window 1 · Tech & Porting** — what to port / not port from doubles, backend architecture + CONTRACTS, the ½-LOC shrink. ([windows/tech-porting.md](./windows/tech-porting.md))
+- **Window 2 · Story & Experience** — gx + hackathon theme → user journey, narrative, demo script, page specs. ([windows/story-experience.md](./windows/story-experience.md))
+- **Window 3 · Build Loop** — the autonomous builder: build backend to the locked specs, wire a throwaway test-frontend, loop on stage gates ([GOAL.md](./GOAL.md)). ([windows/build-loop.md](./windows/build-loop.md))
+
+The context-loading pass that produced this `docs/` folder was Window 1's first act. See [windows/README.md](./windows/README.md) for the shared context and handoffs.
 
 ## Hard constraints carried into the code
 
