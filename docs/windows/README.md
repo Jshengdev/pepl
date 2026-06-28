@@ -40,7 +40,7 @@ Windows **1 & 2 lock the specs** (run first + continuously); **Window 3 executes
 | hackathon | `/Users/johnnysheng/code/hackathon` | theme, DEMO-SCRIPT, DEVPOST, tmux-spawn pattern → Window 2 |
 | SOTARE | `/Users/johnnysheng/code/SOTARE` | Johnny's research lab — grounding discipline, cognition store, AI-as-unconscious → distilled in [../reference/SOTARE-RESEARCH.md](../reference/SOTARE-RESEARCH.md) |
 
-**Distilled references:** [../reference/THE-DOUBLE.md](../reference/THE-DOUBLE.md) (what a Double is) · [../reference/SOTARE-RESEARCH.md](../reference/SOTARE-RESEARCH.md) (research to apply).
+**Distilled references:** [../reference/THE-DOUBLE.md](../reference/THE-DOUBLE.md) (what a Double is) · [../reference/SOTARE-RESEARCH.md](../reference/SOTARE-RESEARCH.md) (research to apply) · [../reference/HACKATHON-GOTCHAS.md](../reference/HACKATHON-GOTCHAS.md) (the landmine map — Build window read first) · [../reference/NARRATOR-THE-DOT.md](../reference/NARRATOR-THE-DOT.md) ("The Dot" narrator voice + Pebble-adapted copy).
 
 **Hard constraints (all windows):**
 - Code reads as clean, original pepl.
