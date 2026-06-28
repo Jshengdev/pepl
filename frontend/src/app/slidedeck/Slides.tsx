@@ -78,16 +78,22 @@ function SlideFlutes({
 function Shell({
   children,
   flutes,
+  align = "top",
 }: {
   children: ReactNode;
   flutes?: ReactNode;
+  align?: "top" | "bottom";
 }) {
+  // The padding biases the vertical centering toward the opposite end of the
+  // flutes: "top" → text near the 1/3 mark (flutes grow from the bottom);
+  // "bottom" → text near the 2/3 mark (flutes grow from the top).
+  const bias = align === "top" ? "pb-[34cqh]" : "pt-[34cqh]";
   return (
     <div className="relative h-full w-full overflow-hidden bg-[#f3f4ea]">
       {flutes}
-      {/* pb biases the vertical centering upward → the text group sits around the
-          1/3 mark, freeing the bottom two-thirds for taller flutes. */}
-      <div className="relative z-10 flex h-full w-full flex-col items-center justify-center px-[10cqw] pb-[34cqh] text-center">
+      <div
+        className={`relative z-10 flex h-full w-full flex-col items-center justify-center px-[10cqw] text-center ${bias}`}
+      >
         {children}
       </div>
     </div>
@@ -176,7 +182,7 @@ function Problem() {
 function Existential() {
   return (
     <Shell
-      flutes={<SlideFlutes start={9} lifts={ASCEND} pos="bottom" height="56%" />}
+      flutes={<SlideFlutes start={9} lifts={ASCEND} pos="bottom" height="68%" />}
     >
       <Headline size="4cqw">
         People who can&rsquo;t understand themselves, can&rsquo;t understand
@@ -201,7 +207,7 @@ function Existential() {
 function Insight() {
   return (
     <Shell
-      flutes={<SlideFlutes start={3} lifts={DESCEND} pos="bottom" height="56%" />}
+      flutes={<SlideFlutes start={3} lifts={DESCEND} pos="bottom" height="68%" />}
     >
       <Kicker n="04">The Insight</Kicker>
       <Headline>
@@ -225,9 +231,9 @@ function Insight() {
 // ── 05 — Live demo (subtle flutes on the bottom, behind the globe) ────────────
 function Demo() {
   return (
-    <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden bg-[#f3f4ea]">
-      <SlideFlutes start={0} lifts={LOWVALLEY} pos="bottom" height="42%" />
-      <div className="animate-fade-in relative z-10 aspect-square h-[62cqh]">
+    <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden bg-[#f3f4ea] pb-[16cqh]">
+      <SlideFlutes start={0} lifts={VALLEY} pos="bottom" height="56%" />
+      <div className="animate-fade-in relative z-10 aspect-square h-[52cqh]">
         <HeroGlobe />
       </div>
       <div

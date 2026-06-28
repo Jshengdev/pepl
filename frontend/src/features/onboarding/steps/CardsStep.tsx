@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { createFluted, CARD_DEFAULTS, type FlutedController } from "../fluted";
-import { cardStopsFromColors, SET_LEN } from "../palette";
+import { CARD_DEFAULTS } from "../fluted";
+import { SET_LEN } from "../palette";
+import { CardBacking, BACKING_W, BACKING_H } from "../CardBacking";
 import type { CardDesign, ShapeKind } from "../types";
 
 // Step 3 — "design your card backgrounds". Three fluted backings, each gradient
 // derived from the colors chosen for the profile avatar. Drag the column handles
 // to sculpt heights; drag the dot around each shape to rotate the color set.
+// The backing itself is the shared <CardBacking>, so it stays identical going
+// into the reveal animation.
 
-const CARD_W = 236;
-const CARD_H = Math.round((CARD_W * 600) / 470); // keep the 470:600 card ratio
 const COLS = CARD_DEFAULTS.cols;
 const PALETTE_LEN = SET_LEN; // one full loop of the shape sweeps the whole set
 
