@@ -22,7 +22,7 @@ Shared context: pepl is being built for **Wizard Hackathon** — a themed one-da
 - 🧪 **Potion Lab** — **personalization, identity, communication, human connection; apps that adapt to users.** *(pepl's bullseye — examples include "AI assistant that adapts to a user's communication style" and "smart social network based on interests and personality.")*
 - 🎮 **GameCraft Arena** — games, gamified experiences.
 
-> **Recommended track: Potion Lab.** pepl = invisible AI over your own relationships + an engine (from doubles) that adapts to *your* voice and context. Direct hit.
+> **Recommended track: Potion Lab.** pepl = invisible AI over your own relationships + an engine that adapts to *your* voice and context. Direct hit.
 
 ## Prizes worth targeting (cash + credits)
 
@@ -35,7 +35,7 @@ Shared context: pepl is being built for **Wizard Hackathon** — a themed one-da
 
 ## Sponsor tools = free credits + candidate dependencies
 
-This changes the [CORE-PORT-PLAN](./CORE-PORT-PLAN.md) dependency choices — prefer sponsor tech where it both wins a prize and supplies what pepl needs:
+This changes the [ARCHITECTURE](./ARCHITECTURE.md) dependency choices — prefer sponsor tech where it both wins a prize and supplies what pepl needs:
 
 - **InsForge** — model gateway, compute, deployment, **database, auth**. Candidate replacement for raw OpenRouter + pg + manual deploy.
 - **You.com** — Web Search API (real-time, citation-backed). Candidate for the enrichment / external-grounding step.

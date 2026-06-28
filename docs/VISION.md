@@ -63,6 +63,17 @@ Explicit objectives:
 - (Sarah) "I spent a lot of time blind to myself… I lacked perspective. My solution was in seeing my life better."
 - (Sarah) "Build for someone like me first, then expand."
 
+## Pitch-deck themes (Johnny's notes)
+
+Reinforces + extends the above:
+- **Not journaling / notes / CRM.** AI solves *for* you, proactively (e.g., drafts your personal statement). Immediate value first.
+- **An extension of your personality, not an app.** Pebble is a layer on you, not a tool you operate.
+- **Authenticity, engineered.** "Until it's written and read back, it doesn't exist." It forces you to look, reflect, and get your story told back; a third party can crystallize it.
+- **Your profile is the people around you** — built from and verified by the people who shape your story. "You are the 5 people around you"; everyone ~5 connections apart, so the product follows that theory at every level (network effect, serendipity of stories).
+- **Overcome the data barrier with public info.** Map what's available; "touch the line without being invasive — little by little, pre-cached context per scenario."
+- **Invisible AI that's explicit about what AI is/isn't.** Map your relationships + dynamics for you; be explicit about AI's limits ("principles for humanity / a constitution of AI"). The human abstracts story from experience; AI surfaces, the human means.
+- **Perspective = clarity.** People lack perspective → lack clarity → stuck in a narrow mind ("people in privilege don't know how good their life is until they see it from outside"). Knowing your story reveals your direction — milestones of your journey; writing your book chapter by chapter; the interconnected story of the world.
+
 ## Source map (read in gx/, ranked)
 
 1. `raw/0010-johnny-invisible-ai-division-of-labor.md` — the canonical drop (invisible AI, only-AI/only-you, organization-as-moat, the bridge, the product seed).
@@ -74,4 +85,4 @@ Explicit objectives:
 7. `wiki/the-competitive-field-and-references.md` — landscape + tar-pit risk.
 8. `raw/0001-genesis-framing.md` — genesis: pitch deck as first artifact.
 
-> Naming is still open: "people / personal / perspective / peeps" thread through everything — hence **pepl**.
+> **Product name: Pebble** (the landing says "Pebble"); repo is `pepl`. The MVP experience is specced in [EXPERIENCE.md](./EXPERIENCE.md).

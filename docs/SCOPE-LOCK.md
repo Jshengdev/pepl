@@ -10,7 +10,7 @@ People can't see their own lives because the context is a fragmented, disorganiz
 ## Crystal INPUT shape
 
 ```ts
-// the raw mess for ONE demo user (precached real export — see CORE-PORT-PLAN "engineered half-half")
+// the raw mess for ONE demo user (precached real export — see ARCHITECTURE "engineered half-half")
 type Ingest = {
   contacts?: RawContact[]      // name, handles, emails, last-seen
   messages?: RawMessage[]      // who, when, snippet

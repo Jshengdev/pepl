@@ -8,6 +8,7 @@ Read gx + the hackathon theme(s) and own the **user journey, experience, and nar
 
 ## You own
 
+- **[EXPERIENCE.md](../EXPERIENCE.md)** — the MVP experience spec (landing → onboarding-as-loading → folder/card reveal → planetary relationship orbit; the design system). The living journey doc; keep it current.
 - **VISION** refinement + the **user journey** (the emotional arc, page by page).
 - **DEMO-SCRIPT** — the exact judge-facing walkthrough + the hero / "catch" moment.
 - **Page / experience specs** — the 4 surfaces (Connect · Your Map · Your Story · Ask) and how each *feels*.
@@ -16,7 +17,7 @@ Read gx + the hackathon theme(s) and own the **user journey, experience, and nar
 
 ## You do NOT own
 
-The porting tech / CONTRACTS (Window 1). The building (Window 3).
+The architecture / CONTRACTS (Window 1). The building (Window 3).
 
 ## Inputs
 

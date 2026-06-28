@@ -1,6 +1,6 @@
 # pepl — Autonomous Build-Loop Framework (from `dot` + `sayhello`)
 
-How the **execution-loop window** builds pepl: a lock-before-build ultracode workflow with stage gates and a held-out judge that refuses to ship ungrounded output. `dot` contributes the *workflow discipline*; `sayhello` contributes the *self-validating judge loop*. Sources: `/Users/johnnysheng/code/dot`, `/Users/johnnysheng/code/sayhello`.
+How the **execution-loop window** builds pepl: a lock-before-build ultracode workflow with stage gates and a held-out judge that refuses to ship ungrounded output. `dot` contributes the *workflow discipline*; `sayhello` contributes the *self-validating judge loop*.
 
 ## The core idea
 
@@ -61,10 +61,10 @@ Write-through recording: append every event to a tape *as it streams* (survives 
 6. **Real grounding.** No silent stubs — failures render a visible FAILED badge; the judge rejects ungrounded data.
 7. **Held-out family.** Same model for generate + judge = confident hallucination. Keep them different.
 
-## Reusable primitives (lift, with paths)
+## Reusable primitives (patterns we can apply, with paths)
 
 From `dot`:
-- `docs/CONSTRAINTS.md`, `docs/BUILD-LOOP.md` — the CP-1…CP-7 discipline + stage shape. *Lift verbatim.*
+- `docs/CONSTRAINTS.md`, `docs/BUILD-LOOP.md` — the CP-1…CP-7 discipline + stage shape. *Reuse verbatim.*
 - `docs/SCOPE-LOCK.md`, `docs/CONTRACTS.md`, `docs/GOAL.md`, `docs/DEMO-SCRIPT.md` — the locked-doc templates.
 - `packages/backend/src/types.ts` (zod contracts), `store.ts` (in-memory Map persistence), `director.ts` (durable step workflow), `extract.ts` (one grounded LLM call), `test-e2e.ts` / `test-director.ts` (CLI stage gates: `exit 0` = pass).
 
