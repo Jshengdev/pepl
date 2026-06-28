@@ -20,25 +20,17 @@ The generator and the critic MUST be **different model families**, or the critic
 
 ## Env keys (the build adds these to `backend/.env` + documents in `.env.example`)
 
-- `INSFORGE_URL` + `INSFORGE_ANON_KEY` + `INSFORGE_API_KEY` (admin, server-only) — db + auth + model gateway + hosting (set at the flip; see InsForge wiring). Frontend mirrors `NEXT_PUBLIC_INSFORGE_URL` / `NEXT_PUBLIC_INSFORGE_ANON_KEY`.
+- **InsForge (all set + validated):** `INSFORGE_URL` (oss_host) · `INSFORGE_ANON_KEY` (anon_, public-safe — client/Google-SSO) · `INSFORGE_API_KEY` (ik_, admin/service for the SDK, **server-only**) · `INSFORGE_OPENROUTER_API_KEY` (sk-or, the model gateway). Frontend has `NEXT_PUBLIC_INSFORGE_URL` / `NEXT_PUBLIC_INSFORGE_ANON_KEY`.
 - `YDC_API_KEY` — You.com Research/Search. **Set in `backend/.env` + validated live (200, returns cited sources).**
 - `OPENROUTER_API_KEY` / `CEREBRAS_API_KEY` / `XAI_API_KEY` — already in `backend/.env` (build is on the OpenRouter fallback until the InsForge gateway is wired; XAI = Grok for voice).
 
 ## InsForge — wiring (db + auth + model gateway + deploy)
 
-One platform = the **$500 prize** + most of pepl's infra. Install its Claude Code skills for native help: repo `github.com/InsForge/insforge-skills` (skills `insforge` = app SDK, `insforge-cli` = infra/deploy, `insforge-debug`). Setup is CLI-first; **the build stays on the OpenRouter fallback until the flip.**
+One platform = the **$500 prize** + most of pepl's infra. Install its Claude Code skills for native help: repo `github.com/InsForge/insforge-skills` (skills `insforge` = app SDK, `insforge-cli` = infra/deploy, `insforge-debug`).
 
-**Setup (CLI, needs a one-time `npx @insforge/cli login`):**
-```bash
-npx @insforge/cli create        # or: link  → writes .insforge/project.json (oss_host = your URL)
-npx @insforge/cli secrets get ANON_KEY
-```
-Env — `backend/.env` (server) + `frontend/.env.local` (client):
-- `INSFORGE_URL` (the `oss_host`, e.g. `https://<project>.insforge.app`) + `NEXT_PUBLIC_INSFORGE_URL`
-- `INSFORGE_ANON_KEY` + `NEXT_PUBLIC_INSFORGE_ANON_KEY` (user-scoped client)
-- `INSFORGE_API_KEY` (admin/service — **server-only**)
+**✅ PROVISIONED** — project `pepl` (us-west), this dir linked (`.insforge/project.json`, gitignored). All keys are in `backend/.env` + `frontend/.env.local` (both gitignored) and validated live. URL: `https://n9bdaens.us-west.insforge.app`.
 
-**Model gateway (OpenAI-compatible, OpenRouter-backed → trivial flip).** `POST https://<project>.insforge.dev/v1/chat/completions`, header `Authorization: Bearer <key>`, OpenAI-shaped body with `model` slugs like `anthropic/claude-3-5-sonnet` (generator) + a non-Anthropic slug e.g. `qwen/qwen-2.5-72b-instruct` (critic — **held-out family**). Slugs match OpenRouter, so flipping = swap base URL + key in `llm/client.ts` (`LLM_PROVIDER=insforge`). SSE streaming supported. (The SDK's `insforge.ai.*` is a deprecated fallback — call the gateway endpoint directly.)
+**Model gateway = OpenRouter.** InsForge provisions a project-scoped OpenRouter key (usage bills to InsForge credits → the prize), so there's **no separate gateway URL**: call `https://openrouter.ai/api/v1/chat/completions` with `Authorization: Bearer $INSFORGE_OPENROUTER_API_KEY` (validated, HTTP 200). Slugs are OpenRouter's: generator `anthropic/claude-3-5-sonnet`, critic a non-Anthropic slug e.g. `qwen/qwen-2.5-72b-instruct` (**held-out**). **To route the build's LLM through InsForge with ZERO code change:** set `OPENROUTER_API_KEY` to the `INSFORGE_OPENROUTER_API_KEY` value, keep `LLM_PROVIDER=openrouter`. (The empty-baseUrl `insforge` branch in `llm/client.ts` is then unneeded; if kept, set its baseUrl to `https://openrouter.ai/api/v1` and keyEnv to `INSFORGE_OPENROUTER_API_KEY`.)
 
 **Auth — Google SSO (the landing CTA):**
 ```ts
