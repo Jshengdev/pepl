@@ -317,6 +317,7 @@ export function FlutedBackground({
   bg,
   stops,
   lifts,
+  blur,
 }: {
   lifted?: boolean;
   bg?: string;
@@ -325,6 +326,8 @@ export function FlutedBackground({
   // onboarding-palette colors; the landing passes neither and keeps CONFIG.
   stops?: Stop[];
   lifts?: number[];
+  // Optional blur override — lower = sharper, more distinct flute columns.
+  blur?: number;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const ctrl = useRef<FlutedController | null>(null);
@@ -336,6 +339,7 @@ export function FlutedBackground({
       cfg.lifts = lifts;
       cfg.cols = lifts.length;
     }
+    if (blur !== undefined) cfg.blur = blur;
     if (bg) {
       // bg override recolors the canvas fill; without explicit stops it also
       // recolors the final fade stop so the flutes rise out of that background.
@@ -347,7 +351,7 @@ export function FlutedBackground({
     }
     ctrl.current = createFlutedGradient(ref.current, cfg);
     return () => ctrl.current?.destroy();
-  }, [bg, stops, lifts]);
+  }, [bg, stops, lifts, blur]);
   useEffect(() => {
     ctrl.current?.setLifted(lifted);
   }, [lifted]);

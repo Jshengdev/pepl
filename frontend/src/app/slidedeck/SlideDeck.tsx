@@ -65,13 +65,13 @@ export function SlideDeck() {
   return (
     <div
       ref={rootRef}
-      className="fixed inset-0 flex items-center justify-center bg-cream"
+      className="fixed inset-0 flex items-center justify-center bg-[#f3f4ea]"
     >
       {/* 16:9 stage — sized to fit any window, letterboxed, and held at 16:9 in
           fullscreen. `container-type: size` lets the slides size their type in
           cqw/cqh so everything scales with the stage. */}
       <div
-        className="relative aspect-video overflow-hidden bg-cream text-charcoal"
+        className="relative aspect-video overflow-hidden bg-[#f3f4ea] text-charcoal"
         style={{
           width: "min(100vw, calc(100vh * 16 / 9))",
           height: "min(100vh, calc(100vw * 9 / 16))",
