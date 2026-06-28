@@ -36,6 +36,14 @@ export function LandingPage() {
         <HeroGlobe />
       </div>
 
+      {/* Discoverability nudge for the globe — appears briefly, then fades. */}
+      <p
+        aria-hidden="true"
+        className="hint-fade pointer-events-none absolute inset-x-0 top-[67%] z-[5] text-center text-sm italic text-charcoal/50"
+      >
+        tap the globe to trace your path
+      </p>
+
       {/* Soft wash up top keeps the tagline legible over the globe. */}
       <div
         aria-hidden="true"
@@ -95,7 +103,7 @@ export function LandingPage() {
           className="animate-fade-up group pointer-events-auto mb-[8vh] mt-auto inline-flex items-center gap-2.5 rounded-xl bg-white py-3 pl-4 pr-6 text-charcoal ring-1 ring-charcoal/[0.07] shadow-[0_2px_5px_-1px_rgba(42,42,40,0.18),inset_0_1px_0_rgba(255,255,255,0.95)] transition-transform active:scale-[0.96]"
           style={{ animationDelay: "0.3s" }}
         >
-          <span className="text-base font-medium">try it out</span>
+          <span className="text-base font-medium">begin your story</span>
           <svg
             viewBox="0 0 24 24"
             fill="none"

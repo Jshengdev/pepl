@@ -131,18 +131,20 @@ export function StoryStep({ onNext }: { onNext: (story: string) => void }) {
   }, [transcript]);
 
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-col items-center text-center">
+    <div className="mx-auto flex h-full w-full max-w-xl flex-1 flex-col items-center text-center">
       <p className="text-sm font-semibold text-charcoal/60">your first story</p>
       <h1 className="mt-1 text-2xl font-bold tracking-tight text-charcoal sm:text-[28px]">
         tell us, how do you spend your day?
       </h1>
 
+      {/* the recording group, vertically centered in the remaining space */}
+      <div className="flex w-full flex-1 flex-col items-center justify-center">
       {/* mic button — the tactile centerpiece */}
       <button
         type="button"
         onClick={recording ? stop : start}
         aria-label={recording ? "stop recording" : "start recording"}
-        className={`group mt-10 flex h-44 w-56 flex-col items-center justify-center gap-3 rounded-[28px] border transition active:scale-[0.98] ${
+        className={`group flex h-44 w-56 flex-col items-center justify-center gap-3 rounded-[28px] border transition active:scale-[0.98] ${
           recording
             ? "border-transparent bg-charcoal text-white shadow-[0_10px_30px_-8px_rgba(42,42,40,0.45)]"
             : "border-charcoal/10 bg-charcoal/[0.04] text-charcoal hover:bg-charcoal/[0.07] shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_6px_18px_-10px_rgba(42,42,40,0.3)]"
@@ -203,6 +205,7 @@ export function StoryStep({ onNext }: { onNext: (story: string) => void }) {
         {hasStory ? "continue" : "skip for now"}
         <ArrowRight className="h-4 w-4" />
       </button>
+      </div>
     </div>
   );
 }

@@ -10,11 +10,12 @@ import type { AvatarDesign, Stroke } from "../types";
 // Drag the orbit handles to move each color around the circle; tap a handle to
 // recolor it from the set palette; draw a face on top with the cursor.
 
-const FRAME = 340;
 const CIRCLE = 264;
-const ORBIT = CIRCLE / 2 + 12; // handles sit ~12px outside the avatar edge
+const ORBIT = CIRCLE / 2 + 24; // handles sit ~24px outside the avatar edge
 const HANDLE = 36;
+const FRAME = CIRCLE + 2 * (24 + HANDLE); // room for the orbiting handles
 const CENTER = FRAME / 2;
+const PAD = (FRAME - CIRCLE) / 2; // avatar inset within the frame
 
 const cloneStrokes = (ss: Stroke[]) => ss.map((s) => s.map((p) => ({ ...p })));
 
@@ -132,86 +133,89 @@ export function ProfileStep({
   }
 
   return (
-    <div className="flex w-full flex-col items-center">
+    <div className="flex h-full w-full flex-1 flex-col items-center">
       <h1 className="text-2xl font-bold tracking-tight text-charcoal">create your profile</h1>
       <p className="mt-2 text-sm text-charcoal/60">
         drag the dots to move each color · tap a dot to recolor · draw a face
       </p>
 
-      <div className="mt-8 flex items-center gap-6">
+      {/* centered maker — arrows pinned to the far edges */}
+      <div className="relative flex w-full flex-1 items-center justify-center">
         <button
           type="button"
           onClick={onBack}
           aria-label="back"
-          className="flex h-10 w-10 items-center justify-center rounded-full text-charcoal/45 transition hover:bg-charcoal/5 hover:text-charcoal"
+          className="absolute left-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-charcoal/45 transition hover:bg-charcoal/5 hover:text-charcoal"
         >
           <ArrowLeft className="h-6 w-6" />
         </button>
 
-        {/* the maker frame */}
-        <div ref={frameRef} className="relative" style={{ width: FRAME, height: FRAME }}>
-          {/* avatar — mesh gradient + the drawn face */}
-          <div className="absolute" style={{ left: 38, top: 38, width: CIRCLE, height: CIRCLE }}>
-            <MeshAvatar
-              points={value.points}
-              strokes={value.strokes}
-              className="h-full w-full shadow-[0_12px_36px_-12px_rgba(42,42,40,0.45)]"
-              strokeWidth={6}
+        <div className="flex flex-col items-center">
+          {/* the maker frame */}
+          <div ref={frameRef} className="relative" style={{ width: FRAME, height: FRAME }}>
+            {/* avatar — mesh gradient + the drawn face */}
+            <div className="absolute" style={{ left: PAD, top: PAD, width: CIRCLE, height: CIRCLE }}>
+              <MeshAvatar
+                points={value.points}
+                strokes={value.strokes}
+                className="h-full w-full shadow-[0_12px_36px_-12px_rgba(42,42,40,0.45)]"
+                strokeWidth={6}
+              />
+            </div>
+
+            {/* drawing surface (transparent, captures the cursor over the circle) */}
+            <div
+              ref={drawRef}
+              onPointerDown={onDrawDown}
+              onPointerMove={onDrawMove}
+              onPointerUp={onDrawUp}
+              className="absolute cursor-crosshair rounded-full"
+              style={{ left: PAD, top: PAD, width: CIRCLE, height: CIRCLE, touchAction: "none" }}
             />
+
+            {/* orbit handles */}
+            {value.points.map((p, i) => {
+              const x = CENTER + Math.cos(p.angle) * ORBIT - HANDLE / 2;
+              const y = CENTER + Math.sin(p.angle) * ORBIT - HANDLE / 2;
+              return (
+                <button
+                  key={i}
+                  onPointerDown={onHandleDown}
+                  onPointerMove={(e) => onHandleMove(i, e)}
+                  onPointerUp={(e) => onHandleUp(i, e)}
+                  aria-label={`color ${i + 1}`}
+                  className={`absolute touch-none rounded-full border-2 border-white shadow-[0_3px_10px_-2px_rgba(42,42,40,0.4)] transition-transform hover:scale-110 ${
+                    activeIdx === i ? "ring-2 ring-charcoal/30 ring-offset-2" : ""
+                  }`}
+                  style={{
+                    left: x,
+                    top: y,
+                    width: HANDLE,
+                    height: HANDLE,
+                    backgroundColor: p.color,
+                    cursor: "grab",
+                  }}
+                />
+              );
+            })}
           </div>
 
-          {/* drawing surface (transparent, captures the cursor over the circle) */}
-          <div
-            ref={drawRef}
-            onPointerDown={onDrawDown}
-            onPointerMove={onDrawMove}
-            onPointerUp={onDrawUp}
-            className="absolute cursor-crosshair rounded-full"
-            style={{ left: 38, top: 38, width: CIRCLE, height: CIRCLE, touchAction: "none" }}
-          />
-
-          {/* orbit handles */}
-          {value.points.map((p, i) => {
-            const x = CENTER + Math.cos(p.angle) * ORBIT - HANDLE / 2;
-            const y = CENTER + Math.sin(p.angle) * ORBIT - HANDLE / 2;
-            return (
-              <button
-                key={i}
-                onPointerDown={onHandleDown}
-                onPointerMove={(e) => onHandleMove(i, e)}
-                onPointerUp={(e) => onHandleUp(i, e)}
-                aria-label={`color ${i + 1}`}
-                className={`absolute touch-none rounded-full border-2 border-white shadow-[0_3px_10px_-2px_rgba(42,42,40,0.4)] transition-transform hover:scale-110 ${
-                  activeIdx === i ? "ring-2 ring-charcoal ring-offset-2" : ""
-                }`}
-                style={{
-                  left: x,
-                  top: y,
-                  width: HANDLE,
-                  height: HANDLE,
-                  backgroundColor: p.color,
-                  cursor: "grab",
-                }}
-              />
-            );
-          })}
+          {/* palette strip — appears when a handle is selected */}
+          <div className="mt-5 h-12">{activeIdx !== null && renderPalette(activeIdx)}</div>
         </div>
 
         <button
           type="button"
           onClick={onNext}
           aria-label="next"
-          className="flex h-10 w-10 items-center justify-center rounded-full text-charcoal/70 transition hover:bg-charcoal/5 hover:text-charcoal"
+          className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-charcoal/70 transition hover:bg-charcoal/5 hover:text-charcoal"
         >
           <ArrowRight className="h-7 w-7" />
         </button>
       </div>
 
-      {/* palette strip — appears when a handle is selected */}
-      <div className="mt-6 h-12">{activeIdx !== null && renderPalette(activeIdx)}</div>
-
       {/* drawing controls — undo / redo / clear */}
-      <div className="mt-2 flex items-center gap-4 text-xs font-medium text-charcoal/55">
+      <div className="mb-2 flex items-center gap-4 text-xs font-medium text-charcoal/55">
         <button
           type="button"
           onClick={undo}

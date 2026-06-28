@@ -169,10 +169,36 @@ body {
   animation: pin-ripple 0.85s cubic-bezier(0.2, 0, 0, 1) forwards;
 }
 
+/* A gentle, self-fading nudge inviting the globe interaction. */
+@keyframes hint-fade {
+  0%,
+  18% {
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.5;
+  }
+  72% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.hint-fade {
+  opacity: 0;
+  animation: hint-fade 8s ease forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up,
   .animate-fade-in {
     animation: none;
     opacity: 1;
+  }
+  .hint-fade {
+    animation: none;
+    opacity: 0.4;
   }
 }

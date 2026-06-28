@@ -17,6 +17,16 @@ const PEARL = [
   "rgba(228,206,250,0.46)",
 ];
 
+// A few seeded places so the connecting "threads" draw themselves on load —
+// the globe demonstrates its own story instead of waiting to be discovered.
+// Click adds yours to the path.
+const SAMPLE_PINS: Pin[] = [
+  { lat: 40, lng: -55 },
+  { lat: 50, lng: -8 },
+  { lat: 30, lng: 22 },
+  { lat: 22, lng: -28 },
+];
+
 /**
  * The actual WebGL globe. Only ever rendered on the client (loaded via a
  * dynamic import with `ssr: false` from HeroGlobe.tsx), so touching `window`,
@@ -32,7 +42,7 @@ export default function HeroGlobeCanvas() {
   const rippleSeq = useRef(0);
 
   const [size, setSize] = useState({ width: 0, height: 0 });
-  const [pins, setPins] = useState<Pin[]>([]);
+  const [pins, setPins] = useState<Pin[]>(SAMPLE_PINS);
   const [ripples, setRipples] = useState<{ id: number; x: number; y: number }[]>(
     [],
   );

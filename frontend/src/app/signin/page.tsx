@@ -9,16 +9,15 @@ import { FlutedBackground } from "@/features/landing/FlutedBackground";
 // /signin — a light placeholder gate. Either button drops you into onboarding
 // (a real auth provider will hook in here later).
 
-// soft pepl gradient revealed on button hover (no drop shadow)
-const HOVER_GRADIENT =
-  "hover:bg-[linear-gradient(100deg,#8fb3e8,#c4a9d0,#e8acbe,#f6c19c)]";
+// soft pepl gradient revealed (fading in) on button hover — no drop shadow
+const GRADIENT = "linear-gradient(100deg,#8fb3e8,#c4a9d0,#e8acbe,#f6c19c)";
 
 export default function SignInPage() {
   const router = useRouter();
   const go = () => router.push("/onboarding");
 
   return (
-    <main className="relative flex min-h-dvh w-full flex-col items-center px-6 pt-[12vh]">
+    <main className="relative flex min-h-dvh w-full flex-col items-center justify-center px-6">
       {/* fluted gradient backdrop — flipped to hang from the top (vs. the
           landing page, where it grows from the bottom) */}
       <div className="fixed inset-0 -z-10 [transform:scaleY(-1)]" aria-hidden="true">
@@ -44,17 +43,31 @@ export default function SignInPage() {
           <button
             type="button"
             onClick={go}
-            className={`inline-flex items-center justify-center gap-2.5 rounded-xl bg-white py-3.5 text-[15px] font-medium text-charcoal ring-1 ring-charcoal/[0.1] transition hover:ring-transparent ${HOVER_GRADIENT}`}
+            className="group relative overflow-hidden rounded-xl bg-white py-3.5 text-[15px] font-medium text-charcoal ring-1 ring-charcoal/[0.1] transition hover:ring-transparent"
           >
-            <GoogleG /> continue with Google
+            <span
+              aria-hidden="true"
+              className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+              style={{ backgroundImage: GRADIENT }}
+            />
+            <span className="relative z-10 flex items-center justify-center gap-2.5">
+              <GoogleG /> continue with Google
+            </span>
           </button>
           <button
             type="button"
             onClick={go}
-            className={`group inline-flex items-center justify-center gap-2 rounded-xl bg-charcoal py-3.5 text-[15px] font-medium text-white transition hover:text-charcoal ${HOVER_GRADIENT}`}
+            className="group relative overflow-hidden rounded-xl bg-charcoal py-3.5 text-[15px] font-medium text-white"
           >
-            <Mail className="h-4 w-4" /> continue with email
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            <span
+              aria-hidden="true"
+              className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+              style={{ backgroundImage: GRADIENT }}
+            />
+            <span className="relative z-10 flex items-center justify-center gap-2 transition-colors duration-300 group-hover:text-charcoal">
+              <Mail className="h-4 w-4" /> continue with email
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </span>
           </button>
         </div>
       </div>
