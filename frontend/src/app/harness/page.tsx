@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 // The shapes are the law: import from the single source, never redefine.
 // Type-only — erased at build, so no zod is pulled into the browser bundle.
-import type { WsEvent } from "../../../../backend/src/types";
+import type { WsEvent } from "@/lib/pepl/types";
 
 const API = process.env.NEXT_PUBLIC_API_URL;
 const WS = API ? `${API.replace(/^http/, "ws")}/ws` : null;

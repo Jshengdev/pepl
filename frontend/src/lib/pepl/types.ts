@@ -1,6 +1,7 @@
-// pepl UI types. Single source of truth = backend/src/types.ts (the zod schemas are the law).
-// Type-only re-export: erased at build → zero zod in the browser bundle, and the compiler
-// catches any drift from the backend shapes (INTEGRATION.md law 1: never redefine a shape).
+// pepl UI types. Single source of truth = backend/src/types.ts (the zod schemas are the law),
+// vendored verbatim into ./contract.ts so the frontend deploys self-contained (Vercel sees only
+// frontend/). Type-only re-export: erased at build → zero zod in the browser bundle, and the
+// compiler catches any drift from the contract shapes (INTEGRATION.md law 1: never redefine a shape).
 import type {
   Dossier,
   DossierCard,
@@ -14,7 +15,7 @@ import type {
   Person,
   Edge,
   Mode,
-} from "../../../../backend/src/types";
+} from "./contract";
 
 export type {
   Dossier,

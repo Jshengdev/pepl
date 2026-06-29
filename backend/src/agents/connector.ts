@@ -226,8 +226,13 @@ export async function runConnector(
   }
 
   const [da, db] = await Promise.all([loadDossier(aId), loadDossier(bId)]);
-  if (!da) throw new Error(`[pepl:connector] no dossier for "${aId}" — cannot connect a node that isn't in the store`);
-  if (!db) throw new Error(`[pepl:connector] no dossier for "${bId}" — cannot connect a node that isn't in the store`);
+  // A node with no persisted dossier = honest "no link" (link:null), NOT a hard 422 — a not-yet-
+  // persisted node must not error the reveal. Don't cache it (the node may get a dossier later).
+  if (!da || !db) {
+    const missing = !da ? aId : bId;
+    console.warn(`[pepl:connector] no dossier for "${missing}" — link:null (node not persisted yet; not caching)`);
+    return { link: null, similarities: [], mode: "live" };
+  }
   const na = subjectName(aId, da);
   const nb = subjectName(bId, db);
   console.log(`[pepl:connector] pair A="${aId}"(n=${da.signals.length} sig, "${na}") B="${bId}"(n=${db.signals.length} sig, "${nb}")`);
