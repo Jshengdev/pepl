@@ -5,7 +5,7 @@
 //   The drawn card (smiley + colors + gradient) lives in its OWN table (user_cards), NOT in dossiers —
 //   it is made before the scrape and must survive saveDossier's delete+reinsert (see saveCard/loadCard).
 import { createAdminClient, type InsForgeClient } from "@insforge/sdk";
-import type { Signal, Person, Edge, RelationshipGraph, Story, CriticVerdict, Card, MapNode } from "../types";
+import type { Signal, Person, Edge, RelationshipGraph, Story, CriticVerdict, Card, MapNode, Bio } from "../types";
 
 // Lazy singleton so .env load order never matters (same as llm/client.ts resolving at call time).
 let _admin: InsForgeClient | null = null;
@@ -238,7 +238,7 @@ export async function loadCard(userId: string): Promise<CardPayload | null> {
 export async function listMapNodes(): Promise<MapNode[]> {
   const t0 = Date.now();
   const [dos, crd] = await Promise.all([
-    db().from("dossiers").select("user_id, owner_name"),
+    db().from("dossiers").select("user_id, owner_name, bio"),
     db().from("user_cards").select("user_id, smiley"),
   ]);
   surface("select dossiers (map nodes)", dos.error);
@@ -247,10 +247,11 @@ export async function listMapNodes(): Promise<MapNode[]> {
   const smileyBy = new Map<string, string>();
   for (const r of (crd.data ?? []) as Array<{ user_id: string; smiley: string }>) smileyBy.set(r.user_id, r.smiley);
 
-  const nodes: MapNode[] = ((dos.data ?? []) as Array<{ user_id: string; owner_name: string }>).map((r) => ({
+  const nodes: MapNode[] = ((dos.data ?? []) as Array<{ user_id: string; owner_name: string; bio: Bio | null }>).map((r) => ({
     userId: r.user_id,
     name: r.owner_name,
     smiley: smileyBy.get(r.user_id) ?? null,
+    bio: r.bio ?? null,
   }));
 
   const withSmiley = nodes.filter((n) => n.smiley).length;

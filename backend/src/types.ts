@@ -149,10 +149,22 @@ export type Dossier = z.infer<typeof Dossier>;
 
 // --- The map + Knot the connector (Part 7) -----------------------------------------------------
 
+// Profile-card bio. Inferred from the person's signals (Gmail/corpus + You.com footprint). Best-effort
+// GROUNDED: occupation always; hometown/age only when supported; birthday only on an explicit date — an
+// empty string is an honest "not in the scrape", NEVER a fabricated value (§2).
+export const Bio = z.object({
+  occupation: z.string(),
+  hometown: z.string(),
+  age: z.string(),
+  birthday: z.string(),
+});
+export type Bio = z.infer<typeof Bio>;
+
 export const MapNode = z.object({
   userId: z.string(),
   name: z.string(),
   smiley: z.string().nullable(), // the drawn smiley avatar; null until /api/card
+  bio: Bio.nullable(),           // inferred profile for the card front; null until seeded
 });
 export type MapNode = z.infer<typeof MapNode>;
 
