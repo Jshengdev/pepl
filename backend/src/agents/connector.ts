@@ -16,6 +16,9 @@ import { Similarity, ConnectionStory, type Mode, type Story, type CriticVerdict,
 // Cap signals per side so a 39-signal dossier doesn't blow the overlap prompt (same bounds as connect-map).
 const MAX_SIGNALS = 18;
 const SIGNAL_CHARS = 200;
+// The overlap LLM occasionally misattributes a citation (cites one person's id under the other), most often
+// when the two share context. We drop the bad thread + retry the run a few times rather than 422 the link.
+const MAX_OVERLAP_TRIES = 4;
 
 const norm = (s: string): string => s.toLowerCase().replace(/\s+/g, " ").trim();
 
@@ -128,24 +131,43 @@ Find the real shared threads between ${na} (PERSON A) and ${nb} (PERSON B). Cite
 
   onEvent({ type: "node_start", node: "overlap" });
   const t0 = Date.now();
-  const raw = await complete({ tier: "GENERATOR", system: OVERLAP_SYSTEM, prompt, json: true, temperature: 0.3, maxTokens: 1500 });
-  const { similarities } = OverlapOut.parse(parseJson(raw));
 
-  // Fabrication guard (mirror generator.ts), per side: every receipt must be a real id for THAT person.
-  const bad = similarities.flatMap((s) => {
-    const errs: string[] = [];
-    if (!idsA.has(s.aSignalId)) errs.push(`A:${s.aSignalId}`);
-    if (!idsB.has(s.bSignalId)) errs.push(`B:${s.bSignalId}`);
-    return errs;
-  });
-  if (bad.length)
-    throw new Error(`[pepl:connector] FABRICATED CITATIONS: ${bad.join(", ")} not in that side's signal set`);
+  // Per-side fabrication guard (mirror generator.ts): every receipt must be a real id for THAT person.
+  // The LLM occasionally misattributes ONE citation; rather than 422 the whole link, DROP only that thread
+  // (never ship a fabricated id — §2) and keep the validly-cited ones. If a whole run is all-bad (rare),
+  // retry the call (with a touch more temperature so it varies) before conceding honest absence.
+  let valid: Similarity[] = [];
+  let tries = 0;
+  for (; tries < MAX_OVERLAP_TRIES; tries++) {
+    const raw = await complete({
+      tier: "GENERATOR",
+      system: OVERLAP_SYSTEM,
+      prompt,
+      json: true,
+      temperature: 0.3 + 0.15 * tries,
+      maxTokens: 1500,
+    });
+    const { similarities } = OverlapOut.parse(parseJson(raw));
+    const dropped: string[] = [];
+    valid = similarities.filter((s) => {
+      const okA = idsA.has(s.aSignalId);
+      const okB = idsB.has(s.bSignalId);
+      if (!okA || !okB) {
+        dropped.push(`"${s.theme}"${okA ? "" : ` A:${s.aSignalId}`}${okB ? "" : ` B:${s.bSignalId}`}`);
+        return false;
+      }
+      return true;
+    });
+    if (dropped.length) console.warn(`[pepl:connector] dropped ${dropped.length} misattributed thread(s): ${dropped.join("; ")}`);
+    if (valid.length > 0 || similarities.length === 0) break; // grounded threads found, OR an honest 0-overlap
+    console.warn(`[pepl:connector] overlap try ${tries + 1}/${MAX_OVERLAP_TRIES}: every candidate misattributed — retrying`);
+  }
 
   onEvent({ type: "node_done", node: "overlap", ms: Date.now() - t0 });
-  if (similarities.length === 0)
-    console.warn(`[pepl:connector] overlap -> 0 candidates for ${na}(n=${idsA.size}) x ${nb}(n=${idsB.size}) — honest absence`);
-  else console.log(`[pepl:connector] overlap -> candidates=${similarities.length} (${Date.now() - t0}ms)`);
-  return similarities;
+  if (valid.length === 0)
+    console.warn(`[pepl:connector] overlap -> 0 grounded candidates for ${na}(n=${idsA.size}) x ${nb}(n=${idsB.size}) after ${tries} tr — honest absence`);
+  else console.log(`[pepl:connector] overlap -> candidates=${valid.length} (${Date.now() - t0}ms, ${tries} tr)`);
+  return valid;
 }
 
 /**
