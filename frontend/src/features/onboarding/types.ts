@@ -39,6 +39,9 @@ export type Person = {
   hometown: string;
   birthday: string;
   occupation: string;
+  tagline: string;
+  personality: string;
+  facts: string[];
   pos: { x: number; y: number }; // node position on the graph, in %
   // the user's own card carries their designed avatar; others get a seeded mesh
   avatar: AvatarDesign;

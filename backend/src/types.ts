@@ -156,7 +156,9 @@ export const Bio = z.object({
   occupation: z.string(),
   hometown: z.string(),
   age: z.string(),
-  birthday: z.string(),
+  tagline: z.string(), // one vivid line capturing who they are
+  personality: z.string(), // MBTI-style type if inferable, else ""
+  facts: z.array(z.string()), // 2-4 identity-defining "known for" things
 });
 export type Bio = z.infer<typeof Bio>;
 

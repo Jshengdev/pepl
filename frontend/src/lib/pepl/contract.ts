@@ -155,10 +155,23 @@ export type Dossier = z.infer<typeof Dossier>;
 
 // --- The map + Knot the connector (Part 7) -----------------------------------------------------
 
+// Profile-card bio — inferred from the person's signals (occupation/hometown/age + tagline, personality,
+// "known for" facts). Empty string / empty array = honest "not in the scrape", never fabricated (§2).
+export const Bio = z.object({
+  occupation: z.string(),
+  hometown: z.string(),
+  age: z.string(),
+  tagline: z.string(),
+  personality: z.string(),
+  facts: z.array(z.string()),
+});
+export type Bio = z.infer<typeof Bio>;
+
 export const MapNode = z.object({
   userId: z.string(),
   name: z.string(),
   smiley: z.string().nullable(), // the drawn smiley avatar; null until /api/card
+  bio: Bio.nullable(), // inferred profile for the card front; null until seeded
 });
 export type MapNode = z.infer<typeof MapNode>;
 
