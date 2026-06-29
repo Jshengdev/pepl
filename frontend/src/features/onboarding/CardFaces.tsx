@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Hourglass, MapPin, Briefcase, Sparkles, type LucideIcon } from "lucide-react";
 import { createFluted, CARD_DEFAULTS, type FlutedController } from "./fluted";
 import { cardStopsFromColors, FADE_BG } from "./palette";
@@ -18,22 +18,10 @@ const PAPER_TEXTURE =
 const GRAIN =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")";
 
-export function CardFront({ person }: { person: Person }) {
-  // Only show rows that actually have a grounded value (empty = not in the scrape, never faked).
-  const rows = (
-    [
-      [Briefcase, "Occupation", person.occupation],
-      [MapPin, "Based in", person.hometown],
-      [Hourglass, "Age", person.age],
-      [Sparkles, "Personality", person.personality],
-    ] as [LucideIcon, string, string][]
-  ).filter(([, , v]) => v);
+// The cream card shell with the painterly tooth — shared by every front face.
+function CardShell({ children }: { children: ReactNode }) {
   return (
-    <div
-      className="relative h-full w-full overflow-hidden rounded-[34px]"
-      style={{ backgroundColor: FADE_BG }}
-    >
-      {/* painterly tooth — canvas texture + grain, matching the gradient backs */}
+    <div className="relative h-full w-full overflow-hidden rounded-[34px]" style={{ backgroundColor: FADE_BG }}>
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
@@ -44,44 +32,66 @@ export function CardFront({ person }: { person: Person }) {
         className="pointer-events-none absolute inset-0"
         style={{ backgroundImage: GRAIN, backgroundSize: "200px 200px", opacity: 0.14, mixBlendMode: "multiply" }}
       />
+      <div className="relative z-10 flex h-full flex-col px-6 pb-6 pt-7">{children}</div>
+    </div>
+  );
+}
 
-      <div className="relative z-10 flex h-full flex-col px-6 pb-6 pt-7">
-        {/* identity — name + the one line that captures them */}
+// The front of a card. The 3 cards in a person's stack DISTRIBUTE the info so nothing is cut off:
+//   page 0 = identity (name + tagline + occupation/location/age/personality)
+//   page 1 = "Known for"      (first half of the grounded facts)
+//   page 2 = "Also known for" (the rest)
+export function CardFront({ person, page = 0 }: { person: Person; page?: number }) {
+  if (page === 0) {
+    const rows = (
+      [
+        [Briefcase, "Occupation", person.occupation],
+        [MapPin, "Based in", person.hometown],
+        [Hourglass, "Age", person.age],
+        [Sparkles, "Personality", person.personality],
+      ] as [LucideIcon, string, string][]
+    ).filter(([, , v]) => v);
+    return (
+      <CardShell>
         <p className="text-[13px] font-semibold text-[#6e6e6e]">#{person.rank} of pepl</p>
-        <p className="mt-0.5 text-[25px] font-semibold leading-[1.04] tracking-tight text-black">
-          {person.name}
-        </p>
+        <p className="mt-0.5 text-[26px] font-semibold leading-[1.04] tracking-tight text-black">{person.name}</p>
         {person.tagline && (
-          <p className="mt-1 text-[12px] italic leading-snug text-[#8a8a8a]">{person.tagline}</p>
+          <p className="mt-1.5 text-[12.5px] italic leading-snug text-[#8a8a8a]">{person.tagline}</p>
         )}
-
-        {/* facts — label + value rows, only the grounded ones */}
-        <div className="mt-4 flex flex-col gap-2 text-[11.5px]">
+        <div className="mt-5 flex flex-col gap-3 text-[12.5px]">
           {rows.map(([Icon, label, val]) => (
             <div key={label} className="flex items-start gap-2">
-              <Icon className="mt-px h-3.5 w-3.5 shrink-0 text-[#9a9a9a]" strokeWidth={2} />
+              <Icon className="mt-px h-4 w-4 shrink-0 text-[#9a9a9a]" strokeWidth={2} />
               <span className="font-semibold text-[#6e6e6e]">{label}</span>
               <span className="ml-1 font-semibold text-black">{val}</span>
             </div>
           ))}
         </div>
+      </CardShell>
+    );
+  }
 
-        {/* known for — the identity-defining things */}
-        {person.facts.length > 0 && (
-          <div className="mt-4">
-            <p className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-[#9a9a9a]">Known for</p>
-            <ul className="mt-1.5 flex flex-col gap-1.5">
-              {person.facts.slice(0, 4).map((f, i) => (
-                <li key={i} className="flex gap-1.5 text-[11.5px] leading-snug text-black">
-                  <span className="mt-[5px] h-1 w-1 shrink-0 rounded-full bg-[#b0b0b0]" />
-                  <span className="font-medium">{f}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+  // "known for" facts split across the two back cards so neither overflows.
+  const mid = Math.ceil(person.facts.length / 2);
+  const facts = page === 1 ? person.facts.slice(0, mid) : person.facts.slice(mid);
+  const heading = page === 1 ? "Known for" : "Also known for";
+  return (
+    <CardShell>
+      <p className="text-[12px] font-semibold text-[#9a9a9a]">{person.name}</p>
+      <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[#6e6e6e]">{heading}</p>
+      <ul className="mt-4 flex flex-col gap-3.5">
+        {facts.length > 0 ? (
+          facts.map((f, i) => (
+            <li key={i} className="flex gap-2 text-[13px] leading-snug text-black">
+              <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#b0b0b0]" />
+              <span className="font-medium">{f}</span>
+            </li>
+          ))
+        ) : (
+          <li className="text-[12.5px] italic leading-snug text-[#8a8a8a]">{person.tagline || "tap the map to connect"}</li>
         )}
-      </div>
-    </div>
+      </ul>
+    </CardShell>
   );
 }
 

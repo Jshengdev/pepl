@@ -83,7 +83,7 @@ export function CardStack({ person }: { person: Person }) {
             }}
           >
             <div className="absolute inset-0 [backface-visibility:hidden]">
-              <CardFront person={person} />
+              <CardFront person={person} page={c.id} />
             </div>
             <div
               className="absolute inset-0 [backface-visibility:hidden]"
