@@ -9,7 +9,7 @@ This folder is a **rediscoverable record of the high-ROI things each build windo
 - **One file per window**, named for what that window *owned* (not "window-4" — the responsibility):
   - `gotchas/integration-deploy.md` — Integration, deploy & demo-readiness (this window — written first, as the template) ✅
   - `gotchas/backend-engine.md` — the pipeline/agents/orchestrator + build-loop (Window 3) ✅
-  - `gotchas/contracts.md` — types/contracts/scope-lock (Window 1) ⬜
+  - `gotchas/stack-and-sponsors.md` — tech stack, sponsor provisioning, contracts & engine spec (Window 1) ✅
   - `gotchas/story-experience.md` — narrator/voice/experience/FE design (Window 2) ⬜
   - *(adjust names to your actual responsibility)*
 - Each window **adds one line to the index above** when done.
